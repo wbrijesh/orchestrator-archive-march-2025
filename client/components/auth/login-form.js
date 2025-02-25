@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from '@/lib/api';
+import { setCookie } from '@/lib/cookie';
 
 export function LoginForm({ className, ...props }) {
   const router = useRouter();
@@ -29,7 +30,7 @@ export function LoginForm({ className, ...props }) {
         throw new Error(data.details || data.error || 'Login failed');
       }
       
-      localStorage.setItem('token', data.token);
+      setCookie('token', data.token);
       router.push('/dashboard');
     } catch (err) {
       setError(err.message);
