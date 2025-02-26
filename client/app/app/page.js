@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCookie } from '@/lib/cookie';
 import { api } from '@/lib/api';
@@ -17,7 +17,7 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const { userData, loading } = useUser();
 
-  const handleTaskSubmit = async () => {
+  const handleTaskSubmit = useCallback(async () => {
     try {
       const token = getCookie('token');
       if (!token) {
@@ -37,7 +37,7 @@ export default function Dashboard() {
       setError('Failed to create task');
       console.error('Error:', error);
     }
-  };
+  }, [router, task]);
 
   useEffect(() => {
     if (taskSubmit && task) {
@@ -45,7 +45,7 @@ export default function Dashboard() {
       setTaskSubmit(false);
       setTask('');
     }
-  }, [taskSubmit, task]);
+  }, [taskSubmit, task, handleTaskSubmit]);
 
   if (loading) {
     return (

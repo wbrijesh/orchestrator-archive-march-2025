@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCookie } from '@/lib/cookie';
 import { api } from '@/lib/api';
 import TopBar from '@/components/blocks/top-bar';
 import { useUser } from '@/context/UserContext';
+import SessionReplayer from '@/components/blocks/session-replayer';
 
 export default function TaskDetails({ params }) {
   const router = useRouter();
   const [task, setTask] = useState(null);
   const [error, setError] = useState('');
+  const [events, setEvents] = useState(null);
   const unwrappedParams = React.use(params);
   const { userData, loading } = useUser();
 
@@ -42,10 +44,25 @@ export default function TaskDetails({ params }) {
       }
     };
 
+    const fetchSessionRecording = async () => {
+      try {
+        const response = await fetch('/api/recording');
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch recording');
+        }
+        setEvents(data);
+      } catch (err) {
+        console.error('Error fetching session recording:', err);
+        setError('Failed to load session recording');
+      }
+    };
+
     if (unwrappedParams.id) {
       fetchTask();
+      fetchSessionRecording();
     }
-  }, [unwrappedParams.id]);
+  }, [unwrappedParams.id, router]);
 
   if (loading) {
     return (
@@ -70,32 +87,27 @@ export default function TaskDetails({ params }) {
     );
   }
 
-  if (!task) {
-    return (
-      <div className="min-h-screen">
-        <TopBar userData={userData} />
-        <div className="py-8 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-white shadow rounded-lg p-6">
-              <p>Loading...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <TopBar userData={userData} />
-      <div className="py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white shadow rounded-lg p-6">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-4">{task.name}</h1>
-            <div className="text-sm text-gray-500">
-              Created at: {new Date(task.created_at).toLocaleString()}
+      <div className="flex-grow grid grid-cols-12 gap-6 px-6 pb-6">
+        <div className="col-span-5 bg-white shadow rounded-lg p-6 h-full">
+          {task && (
+            <>
+              <h1 className="text-2xl font-light text-gray-900 mb-4 tracking-wide">{task.name}</h1>
+              <p className="mt-4 text-neutral-400">ID: {task.id}</p>
+            </>
+          )}
+        </div>
+        <div className="col-span-7 h-full">
+          {/* <h2 className="text-lg text-gray-700 mb-4">Session Recording</h2> */}
+          {events ? (
+            <SessionReplayer events={events} />
+          ) : (
+            <div className="flex items-center justify-center h-[500px] bg-gray-100 rounded">
+              <p className="text-gray-500">Loading session recording...</p>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

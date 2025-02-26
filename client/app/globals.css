@@ -11,6 +11,10 @@ body {
   font-family: 'PangeaBasic' !important;
 }
 
+.rr-player__frame {
+  background-color: #fafafa !important;
+}
+
 textarea {
   resize: none;
 }
