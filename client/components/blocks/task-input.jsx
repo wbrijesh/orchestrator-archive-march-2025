@@ -22,6 +22,13 @@ const TaskInput = ({ task, setTask, setActive }) => {
         }
     }
 
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            makeTaskActive();
+        }
+    };
+
     return (
         <div className='border border-neutral-200 rounded-4xl p-6 bg-white w-[800px]'>
             <textarea
@@ -29,6 +36,7 @@ const TaskInput = ({ task, setTask, setActive }) => {
                 placeholder='Type something...'
                 rows={rows}
                 onChange={handleTextareaChange}
+                onKeyDown={handleKeyDown}
                 value={task}
                 style={{ minHeight: '48px' }}
             />

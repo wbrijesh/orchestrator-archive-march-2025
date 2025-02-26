@@ -31,7 +31,7 @@ export function LoginForm({ className, ...props }) {
       }
       
       setCookie('token', data.token);
-      router.push('/dashboard');
+      router.push('/app');
     } catch (err) {
       setError(err.message);
     }
