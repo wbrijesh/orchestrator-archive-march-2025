@@ -11,21 +11,32 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { removeCookie } from '@/lib/cookie';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
-
-
-
-const TopBar = () => {
+const TopBar = ({userData}) => {
     const router = useRouter();
 
     const handleLogout = () => {
         removeCookie('token');
         removeCookie('userData');
         router.push('/auth/login');
-      };
-    return (
-        <>
+    };
 
+    const getInitials = () => {
+        return `${userData.first_name[0]}${userData.last_name[0]}`;
+    };
+
+    const getFullName = () => {
+        return `${userData.first_name} ${userData.last_name}`;
+    };
+
+    useEffect(() => {
+
+        console.log(userData);
+    }, [userData])
+
+    return (
+        userData.id && <>
             <div className='flex h-14 px-5 items-center justify-between'>
                 <p className='text-lg font-medium text-neutral-700'>
                     Orchestrator
@@ -37,12 +48,14 @@ const TopBar = () => {
                         <DropdownMenuTrigger asChild>
                             <Avatar className="cursor-pointer">
                                 <AvatarFallback className='bg-amber-900 text-white text-sm'>
-                                    {userData && `${userData.first_name[0]}${userData.last_name[0]}`}
+                                    {getInitials()}
                                 </AvatarFallback>
                             </Avatar>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-56">
-                            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                            <DropdownMenuLabel>
+                                {getFullName()}
+                            </DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuGroup>
                                 <DropdownMenuItem>
@@ -59,8 +72,9 @@ const TopBar = () => {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-            </div></>
-    )
-}
+            </div>
+        </>
+    );
+};
 
-export default TopBar
+export default TopBar;

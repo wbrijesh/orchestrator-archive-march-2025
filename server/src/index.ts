@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { db } from './lib/db';
 import { authMiddleware } from './middleware/auth';
 import dotenv from 'dotenv';
+import { randomUUID } from 'crypto';
 
 dotenv.config();
 
@@ -24,6 +25,28 @@ const initDb = async () => {
       first_name TEXT NOT NULL,
       last_name TEXT NOT NULL,
       password TEXT NOT NULL
+    )
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS steps (
+      id TEXT PRIMARY KEY,
+      task_id TEXT NOT NULL,
+      sequence INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      data TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
     )
   `);
 };
@@ -164,6 +187,165 @@ app.get('/user-data', authMiddleware, async (c) => {
 // Hello world route
 app.get('/', (c) => {
   return c.json({ message: 'Hello World!' });
+});
+
+// Tasks endpoints
+app.post('/tasks', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user');
+    const { name } = await c.req.json();
+
+    if (!name) {
+      return c.json({ error: 'Task name is required' }, 400);
+    }
+
+    const taskId = randomUUID();
+    await db.execute({
+      sql: 'INSERT INTO tasks (id, user_id, name) VALUES (?, ?, ?)',
+      args: [taskId, user.userId, name]
+    });
+
+    return c.json({
+      id: taskId,
+      name,
+      created_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error creating task:', error);
+    return c.json({ error: 'Failed to create task' }, 500);
+  }
+});
+
+app.get('/tasks/:id', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user');
+    const taskId = c.req.param('id');
+
+    const result = await db.execute({
+      sql: 'SELECT id, name, created_at FROM tasks WHERE id = ? AND user_id = ?',
+      args: [taskId, user.userId]
+    });
+
+    if (result.rows.length === 0) {
+      return c.json({ error: 'Task not found or unauthorized' }, 404);
+    }
+
+    return c.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching task:', error);
+    return c.json({ error: 'Failed to fetch task' }, 500);
+  }
+});
+
+app.get('/tasks', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user');
+    const tasks = await db.execute({
+      sql: 'SELECT id, name, created_at FROM tasks WHERE user_id = ? ORDER BY created_at DESC',
+      args: [user.userId]
+    });
+
+    return c.json(tasks.rows);
+  } catch (error) {
+    console.error('Error fetching tasks:', error);
+    return c.json({ error: 'Failed to fetch tasks' }, 500);
+  }
+});
+
+app.delete('/tasks/:id', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user');
+    const taskId = c.req.param('id');
+
+    const result = await db.execute({
+      sql: 'DELETE FROM tasks WHERE id = ? AND user_id = ?',
+      args: [taskId, user.userId]
+    });
+
+    if (result.rowsAffected === 0) {
+      return c.json({ error: 'Task not found or unauthorized' }, 404);
+    }
+
+    return c.json({ message: 'Task deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting task:', error);
+    return c.json({ error: 'Failed to delete task' }, 500);
+  }
+});
+
+// Steps endpoints
+app.post('/tasks/:taskId/steps', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user');
+    const taskId = c.req.param('taskId');
+    const { name, data } = await c.req.json();
+
+    if (!name) {
+      return c.json({ error: 'Step name is required' }, 400);
+    }
+
+    // Verify task belongs to user
+    const task = await db.execute({
+      sql: 'SELECT id FROM tasks WHERE id = ? AND user_id = ?',
+      args: [taskId, user.userId]
+    });
+
+    if (task.rows.length === 0) {
+      return c.json({ error: 'Task not found or unauthorized' }, 404);
+    }
+
+    // Get next sequence number
+    const sequenceResult = await db.execute({
+      sql: 'SELECT COALESCE(MAX(sequence), 0) + 1 as next_sequence FROM steps WHERE task_id = ?',
+      args: [taskId]
+    });
+    const sequence = sequenceResult.rows[0].next_sequence;
+
+    const stepId = randomUUID();
+    const result = await db.execute({
+      sql: 'INSERT INTO steps (id, task_id, sequence, name, data) VALUES (?, ?, ?, ?, ?)',
+      args: [stepId, taskId, sequence, name, data]
+    });
+
+    return c.json({
+      id: stepId,
+      task_id: taskId,
+      sequence,
+      name,
+      data,
+      created_at: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error creating step:', error);
+    return c.json({ error: 'Failed to create step' }, 500);
+  }
+});
+
+app.get('/tasks/:taskId/steps', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user');
+    const taskId = c.req.param('taskId');
+
+    // Verify task belongs to user
+    const task = await db.execute({
+      sql: 'SELECT id FROM tasks WHERE id = ? AND user_id = ?',
+      args: [taskId, user.userId]
+    });
+
+    if (task.rows.length === 0) {
+      return c.json({ error: 'Task not found or unauthorized' }, 404);
+    }
+
+    const steps = await db.execute({
+      sql: 'SELECT id, sequence, name, data, created_at FROM steps WHERE task_id = ? ORDER BY sequence',
+      args: [taskId]
+    });
+
+    return c.json(steps.rows);
+  } catch (error) {
+    console.error('Error fetching steps:', error);
+    return c.json({ error: 'Failed to fetch steps' }, 500);
+  }
 });
 
 // Start the server
