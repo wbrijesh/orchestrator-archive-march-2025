@@ -19,6 +19,27 @@ textarea {
   resize: none;
 }
 
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1.2s linear infinite;
+}
+
+.slow-spin {
+  animation: spin 1.8s linear infinite;
+}
+
+.slower-spin {
+  animation: spin 2.4s linear infinite;
+}
+
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));

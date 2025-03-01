@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCookie } from '@/lib/cookie';
 import { api } from '@/lib/api';
 import TopBar from '@/components/blocks/top-bar';
 import { useUser } from '@/context/UserContext';
@@ -19,13 +18,7 @@ export default function TaskDetails({ params }) {
   useEffect(() => {
     const fetchTask = async () => {
       try {
-        const token = getCookie('token');
-        if (!token) {
-          router.push('/auth/login');
-          return;
-        }
-
-        const response = await api.tasks.getById(token, unwrappedParams.id);
+        const response = await api.tasks.getById(unwrappedParams.id);
 
         if (!response.ok) {
           if (response.status === 404) {

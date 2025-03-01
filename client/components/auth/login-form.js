@@ -3,14 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GalleryVerticalEnd } from "lucide-react";
+import { GalleryVerticalEnd, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from '@/lib/api';
-import { setCookie } from '@/lib/cookie';
+import { authCallbacks } from '@/lib/callbacks';
 
 export function LoginForm({ className, ...props }) {
   const router = useRouter();
@@ -19,22 +18,11 @@ export function LoginForm({ className, ...props }) {
     password: ''
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const res = await api.login(formData);
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.details || data.error || 'Login failed');
-      }
-      
-      setCookie('token', data.token);
-      router.push('/app');
-    } catch (err) {
-      setError(err.message);
-    }
+    authCallbacks.handleLogin(formData, router, setError, setIsLoading);
   };
 
   return (
@@ -72,6 +60,7 @@ export function LoginForm({ className, ...props }) {
                 type="email"
                 placeholder="Email"
                 required
+                disabled={isLoading}
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
@@ -83,12 +72,20 @@ export function LoginForm({ className, ...props }) {
                 type="password"
                 placeholder="Password"
                 required
+                disabled={isLoading}
                 value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
               />
             </div>
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
             </Button>
           </div>
         </div>

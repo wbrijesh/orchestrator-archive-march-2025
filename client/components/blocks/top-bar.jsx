@@ -9,18 +9,17 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { removeCookie } from '@/lib/cookie';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import LogoIcon from '@/components/ui/logo-icon';
+import { authCallbacks } from '@/lib/callbacks';
 
 const TopBar = ({ userData }) => {
     const router = useRouter();
 
     const handleLogout = () => {
-        removeCookie('token');
-        removeCookie('userData');
+        authCallbacks.handleLogout();
         router.push('/auth/login');
     };
 
@@ -33,7 +32,6 @@ const TopBar = ({ userData }) => {
     };
 
     useEffect(() => {
-
         console.log(userData);
     }, [userData])
 

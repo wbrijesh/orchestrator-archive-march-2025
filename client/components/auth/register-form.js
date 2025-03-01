@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GalleryVerticalEnd } from "lucide-react";
+import { GalleryVerticalEnd, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from '@/lib/api';
+import { authCallbacks } from '@/lib/callbacks';
 
 export function RegisterForm({ className, ...props }) {
   const router = useRouter();
@@ -20,21 +20,11 @@ export function RegisterForm({ className, ...props }) {
     password: ''
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const res = await api.register(formData);
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.details || data.error || 'Registration failed');
-      }
-      
-      router.push('/auth/login');
-    } catch (err) {
-      setError(err.message);
-    }
+    authCallbacks.handleRegister(formData, router, setError, setIsLoading);
   };
 
   return (
@@ -72,6 +62,7 @@ export function RegisterForm({ className, ...props }) {
                   id="firstName"
                   placeholder="First Name"
                   required
+                  disabled={isLoading}
                   value={formData.firstName}
                   onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                 />
@@ -82,6 +73,7 @@ export function RegisterForm({ className, ...props }) {
                   id="lastName"
                   placeholder="Last Name"
                   required
+                  disabled={isLoading}
                   value={formData.lastName}
                   onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                 />
@@ -94,6 +86,7 @@ export function RegisterForm({ className, ...props }) {
                 type="email"
                 placeholder="Email"
                 required
+                disabled={isLoading}
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
@@ -105,12 +98,20 @@ export function RegisterForm({ className, ...props }) {
                 type="password"
                 placeholder="Password"
                 required
+                disabled={isLoading}
                 value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
               />
             </div>
-            <Button type="submit" className="w-full">
-              Create Account
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                "Create Account"
+              )}
             </Button>
           </div>
         </div>

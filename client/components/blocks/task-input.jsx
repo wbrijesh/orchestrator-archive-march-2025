@@ -1,61 +1,48 @@
+import { useState, useRef, useEffect } from 'react';
+import { inputCallbacks } from '@/lib/callbacks';
 import { ArrowUp } from 'lucide-react';
-import { useState, useRef } from 'react';
+import Spinner from '@/components/ui/spinner';
 
-const TaskInput = ({ task, setTask, setActive }) => {
+const TaskInput = ({ task, setTask, setTaskSubmitting, taskSubmitting }) => {
     const [rows, setRows] = useState(2);
     const textareaRef = useRef(null);
 
-    const handleTextareaChange = (e) => {
-        const textareaLineHeight = 24;
-        const previousRows = e.target.rows;
-        e.target.rows = 2;
-        const currentRows = ~~(e.target.scrollHeight / textareaLineHeight);
-        if (currentRows === previousRows) {
-            e.target.rows = currentRows;
-        }
-        setRows(currentRows);
-        setTask(e.target.value);
-    };
+    // Add keyboard shortcut listener for Cmd+K or Ctrl+K
+    useEffect(() => {
+        const handleKeyDown = (e) => inputCallbacks.handleGlobalKeyDown(e, textareaRef);
 
-    const makeTaskActive = () => {
-        if (task.trim() !== '') {   
-            setActive(true);
-        }
-    }
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            makeTaskActive();
-        }
-    };
-
-    const handleContainerClick = (e) => {
-        if (e.target.tagName !== 'P' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SVG') {
-            textareaRef.current.focus();
-        }
-    };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [textareaRef]);
 
     return (
-        <div className='border border-neutral-200 rounded-4xl p-6 bg-white w-[800px]' onClick={handleContainerClick}>
+        <div className='border border-neutral-200 rounded-4xl p-6 bg-white w-[800px] cursor-text'
+            onClick={(e) => inputCallbacks.handleContainerClick(e, textareaRef)}
+        >
             <textarea
                 ref={textareaRef}
                 className='w-full border-none outline-none resize-none overflow-hidden'
                 placeholder='Type something...'
                 rows={rows}
-                onChange={handleTextareaChange}
-                onKeyDown={handleKeyDown}
+                onChange={(e) => inputCallbacks.handleTextareaChange(e, setRows, setTask)}
+                onKeyDown={(e) => inputCallbacks.handleKeyDown(e, task, setTaskSubmitting)}
                 value={task}
                 style={{ minHeight: '48px' }}
             />
             <div className='flex items-end justify-between'>
                 <p className='text-neutral-400'>Pick platforms if any</p>
-                <button className='rounded-full bg-[#E77F56] text-white p-1' onClick={makeTaskActive}>
-                    <ArrowUp className='h-6 w-6' />
+                <button
+                    className='rounded-full bg-[#E77F56] text-white p-1 relative'
+                    onClick={() => { task.trim() !== '' ? setTaskSubmitting(true) : null }}
+                    disabled={taskSubmitting}
+                >
+                    {taskSubmitting ? <Spinner className="size-6" color="white" /> : <ArrowUp className='text-white size-6' />}
                 </button>
             </div>
         </div>
     )
 }
 
-export default TaskInput
+export default TaskInput;

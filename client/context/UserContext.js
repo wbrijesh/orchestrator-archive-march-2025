@@ -1,8 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getCookie } from '@/lib/cookie';
-import { api } from '@/lib/api';
+import { auth } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
 const UserContext = createContext();
@@ -15,13 +14,7 @@ export function UserProvider({ children }) {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = getCookie('token');
-        if (!token) {
-          router.push('/auth/login');
-          return;
-        }
-
-        const response = await api.userData(token);
+        const response = await auth.userData();
         if (!response.ok) {
           throw new Error('Failed to fetch user data');
         }
