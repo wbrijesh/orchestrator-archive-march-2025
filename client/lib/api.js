@@ -1,6 +1,6 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-import { removeCookie, getCookie } from '@/lib/cookie';
+import { setCookie, removeCookie, getCookie } from '@/lib/cookie';
 
 // Wrapper function to handle API responses and check for unauthorized errors
 const apiRequest = async (url, options = {}) => {
@@ -66,13 +66,42 @@ export const auth = {
   },
 
   login: async (credentials) => {
-    return apiRequest(`${API_URL}/login`, {
+    const response = await apiRequest(`${API_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
     });
+    
+    // If login was successful, set the token cookie
+    if (response.ok) {
+      const data = await response.json();
+      if (data.token) {
+        setCookie('token', data.token, 1); // Store token for 1 day
+        
+        // Store basic user data if available
+        try {
+          const payload = JSON.parse(atob(data.token.split('.')[1]));
+          if (payload) {
+            setCookie('userData', JSON.stringify({
+              userId: payload.userId,
+              email: payload.email
+            }), 1);
+          }
+        } catch (e) {
+          console.error('Error parsing JWT token:', e);
+        }
+      }
+      
+      // Return a new Response object with the same status and headers
+      return new Response(JSON.stringify(data), {
+        status: response.status,
+        headers: response.headers
+      });
+    }
+    
+    return response;
   },
 
   logout: () => {

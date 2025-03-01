@@ -49,16 +49,17 @@ export const authCallbacks = {
     
     try {
       const res = await api.auth.login(formData);
-      const data = await res.json();
       
       if (!res.ok) {
+        const data = await res.json();
         throw new Error(data.details || data.error || 'Login failed');
       }
       
-      // The token is set by the API function
+      // The token is now set by the API function
       router.push('/app');
     } catch (err) {
       setError(err.message);
+      console.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }
