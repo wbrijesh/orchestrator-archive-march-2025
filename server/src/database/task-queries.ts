@@ -120,6 +120,18 @@ export const taskQueries = {
     });
     
     return task.rows.length > 0;
+  },
+  
+  /**
+   * Check if a task exists (without user verification)
+   */
+  taskExists: async (taskId: string) => {
+    const task = await db.execute({
+      sql: 'SELECT id FROM tasks WHERE id = ?',
+      args: [taskId]
+    });
+    
+    return task.rows.length > 0;
   }
 };
 

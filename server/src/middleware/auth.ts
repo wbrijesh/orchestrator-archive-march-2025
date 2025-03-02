@@ -39,3 +39,24 @@ export const authMiddleware = async (c: Context, next: Next) => {
     return c.json({ error: 'Invalid or expired token' }, 401);
   }
 };
+
+// Programmatic API middleware
+export const programmaticMiddleware = async (c: Context, next: Next) => {
+  try {
+    // Get API key from headers
+    const apiKey = c.req.header('x-api-key');
+    
+    // Check if API key is valid (hardcoded for now)
+    const validApiKey = process.env.API_KEY || 'orchestrator-api-key-12345';
+    
+    if (!apiKey || apiKey !== validApiKey) {
+      return c.json({ error: 'Invalid API key' }, 401);
+    }
+    
+    // Continue to the next middleware/handler
+    await next();
+  } catch (error) {
+    console.error('Programmatic middleware error:', error);
+    return c.json({ error: 'API key verification failed' }, 401);
+  }
+};
