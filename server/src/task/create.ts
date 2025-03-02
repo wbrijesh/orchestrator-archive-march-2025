@@ -2,6 +2,7 @@ import { Context } from 'hono';
 import { createBrowserbaseSession, getBrowserbaseReplayUrl } from '../browser/session';
 import { mapBrowserSessionToFields } from '../utils/browser';
 import { taskQueries } from '../database/task-queries';
+import { sendTaskToAgentService } from '../utils/agent';
 
 // Create task handler
 export async function createTaskHandler(c: Context) {
@@ -19,6 +20,14 @@ export async function createTaskHandler(c: Context) {
     
     // Create task and get its ID
     const taskId = await taskQueries.createTask(user.userId, name, browserFields);
+    
+    // Get the complete task data
+    const taskData = await taskQueries.getTaskById(taskId, user.userId);
+    
+    // Send task data to agent service (don't await to avoid blocking)
+    sendTaskToAgentService(taskData).catch(err => {
+      console.error('Failed to send task to agent service:', err);
+    });
     
     // Return the created task with browser session data
     return c.json({
