@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "migrate:browser-fields": "tsx src/migrations/add-browser-fields.ts"
+    "migrate:browser-fields": "tsx src/migrations/add-browser-fields.ts",
+    "migrate:task-validation-fields": "tsx src/migrations/add-task-validation-fields.ts"
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.3.0",

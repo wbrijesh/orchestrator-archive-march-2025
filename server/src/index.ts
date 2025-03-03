@@ -13,10 +13,8 @@ import { getUserDataHandler } from "./user/user";
 import { createTaskHandler } from "./task/create";
 import { getTaskByIdHandler, getAllTasksHandler } from "./task/get";
 import { deleteTaskHandler } from "./task/delete";
-import { 
-  getStepsForTaskHandler,
-  createStepProgrammaticHandler
-} from "./task/steps";
+import { getStepsForTaskHandler, createStepProgrammaticHandler } from "./task/steps";
+import { updateTaskHandler } from "./task/update";
 
 dotenv.config();
 
@@ -69,6 +67,7 @@ app.get("/tasks/:taskId/steps", authMiddleware, getStepsForTaskHandler);
 // Programmatic step routes with API key middleware
 app.post("/programmatic/tasks/:taskId/steps", programmaticMiddleware, createStepProgrammaticHandler);
 app.get("/programmatic/tasks/:taskId/steps", programmaticMiddleware, getStepsForTaskHandler);
+app.patch("/programmatic/tasks/:taskId", programmaticMiddleware, updateTaskHandler);
 
 // Start the server
 const port = 4000;

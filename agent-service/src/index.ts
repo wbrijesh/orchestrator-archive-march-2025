@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import 'dotenv/config';
 
 const app = new Hono();
 
@@ -38,6 +39,7 @@ app.post('/tasks', async (c) => {
     
     activeWorkers.set(taskData.id, worker);
     
+    // Use the correct type for the message event
     worker.onmessage = (event: MessageEvent) => {
       console.log(`Worker message for task ${taskData.id}:`, event.data);
       
@@ -46,10 +48,11 @@ app.post('/tasks', async (c) => {
       }
     };
     
-    worker.addEventListener('error', (event) => {
-      console.error(`Worker for task ${taskData.id} encountered an error:`, event.message);
+    // Use the correct error event handler
+    worker.onerror = (event: ErrorEvent) => {
+      console.error(`Worker for task ${taskData.id} encountered an error:`, event);
       activeWorkers.delete(taskData.id);
-    });
+    };
     
     worker.postMessage(taskData);
     

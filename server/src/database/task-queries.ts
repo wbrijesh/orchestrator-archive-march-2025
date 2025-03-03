@@ -67,15 +67,7 @@ export const taskQueries = {
    */
   getTaskById: async (taskId: string, userId: number) => {
     const result = await db.execute({
-      sql: `SELECT id, name, created_at, 
-        browser_session_id, browser_created_at, browser_updated_at, 
-        browser_project_id, browser_started_at, browser_ended_at, 
-        browser_expires_at, browser_status, browser_proxy_bytes, 
-        browser_avg_cpu_usage, browser_memory_usage, browser_keep_alive, 
-        browser_context_id, browser_region, browser_connect_url, 
-        browser_selenium_remote_url, browser_signing_key
-      FROM tasks 
-      WHERE id = ? AND user_id = ?`,
+      sql: `SELECT * FROM tasks WHERE id = ? AND user_id = ?`,
       args: [taskId, userId]
     });
     
@@ -87,11 +79,7 @@ export const taskQueries = {
    */
   getAllTasks: async (userId: number) => {
     const tasks = await db.execute({
-      sql: `SELECT id, name, created_at, 
-        browser_session_id, browser_status, browser_connect_url 
-      FROM tasks 
-      WHERE user_id = ? 
-      ORDER BY created_at DESC`,
+      sql: `SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC`,
       args: [userId]
     });
     
@@ -132,6 +120,40 @@ export const taskQueries = {
     });
     
     return task.rows.length > 0;
+  },
+
+  /**
+   * Update task fields: isTaskValid, reason, and browser_ended_at
+   * @param taskId The ID of the task to update
+   * @param userId The ID of the user who owns the task
+   * @param updateData Object containing fields to update: isTaskValid, reason, and browser_ended_at
+   * @returns The number of rows affected
+   */
+  updateTask: async (
+    taskId: string, 
+    userId: number, 
+    updateData: { 
+      isTaskValid: string, 
+      reason: string, 
+      browser_ended_at: string 
+    }
+  ) => {
+    const result = await db.execute({
+      sql: `UPDATE tasks 
+            SET isTaskValid = ?, 
+                reason = ?, 
+                browser_ended_at = ? 
+            WHERE id = ? AND user_id = ?`,
+      args: [
+        updateData.isTaskValid,
+        updateData.reason,
+        updateData.browser_ended_at,
+        taskId,
+        userId
+      ]
+    });
+    
+    return result.rowsAffected;
   }
 };
 
@@ -177,7 +199,7 @@ export const stepQueries = {
    */
   getStepsForTask: async (taskId: string) => {
     const steps = await db.execute({
-      sql: 'SELECT id, sequence, name, data, created_at FROM steps WHERE task_id = ? ORDER BY sequence',
+      sql: 'SELECT * FROM steps WHERE task_id = ? ORDER BY sequence',
       args: [taskId]
     });
     

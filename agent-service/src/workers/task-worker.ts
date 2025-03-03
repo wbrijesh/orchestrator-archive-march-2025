@@ -3,14 +3,7 @@
 declare var self: Worker;
 
 import axios from 'axios';
-
-// Task data interface
-interface TaskData {
-  id: string;
-  name: string;
-  created_at: string;
-  [key: string]: any; // Allow any other fields
-}
+import { validateTask, TaskData } from '../ai/task-validation';
 
 // Step interface
 interface Step {
@@ -39,8 +32,37 @@ async function addStepToTask(taskId: string, step: Step): Promise<any> {
     );
     return response.data;
   } catch (error) {
-    console.error(`Error adding step to task ${taskId}:`, error);
     throw error;
+  }
+}
+
+/**
+ * Update task validation status in the database
+ */
+async function updateTaskValidation(
+  taskId: string, 
+  isTaskValid: boolean, 
+  reason: string
+): Promise<boolean> {
+  try {
+    const response = await axios.patch(
+      `${SERVER_URL}/programmatic/tasks/${taskId}`,
+      {
+        isTaskValid: isTaskValid,
+        reason: reason,
+        browser_ended_at: '' // Send empty string as requested
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': API_KEY
+        }
+      }
+    );
+    
+    return response.status === 200;
+  } catch (error) {
+    return false;
   }
 }
 
@@ -48,7 +70,39 @@ async function addStepToTask(taskId: string, step: Step): Promise<any> {
  * Process a task by adding steps at intervals
  */
 async function processTask(task: TaskData): Promise<void> {
-  console.log(`Starting processing for task: ${task.id} - ${task.name}`);
+  // First validate the task using AI
+  const validation = await validateTask(task);
+  
+  // Update task validation status in the database
+  const updateSuccess = await updateTaskValidation(
+    task.id,
+    validation.isTaskValid,
+    validation.reason
+  );
+  
+  // Log the result of updating task status
+  if (updateSuccess) {
+    console.log(`Successfully updated task ${task.id} validation status`);
+  } else {
+    console.log(`Failed to update task ${task.id} validation status`);
+  }
+  
+  // Add a validation step to the task
+  await addStepToTask(task.id, {
+    name: 'Task Validation',
+    data: {
+      timestamp: new Date().toISOString(),
+      validation: validation,
+      message: validation.isTaskValid 
+        ? 'Task validated successfully' 
+        : 'Task validation failed'
+    }
+  });
+  
+  // If task is not valid, stop processing
+  if (!validation.isTaskValid) {
+    return;
+  }
   
   // Add 5 steps, one every 20 seconds
   const totalSteps = 5;
@@ -71,19 +125,16 @@ async function processTask(task: TaskData): Promise<void> {
       };
       
       // Add step to task
-      const result = await addStepToTask(task.id, step);
-      console.log(`Added step ${i}/${totalSteps} to task ${task.id}:`, result.id);
+      await addStepToTask(task.id, step);
       
       // Wait 20 seconds before adding the next step (except for the last one)
       if (i < totalSteps) {
         await new Promise(resolve => setTimeout(resolve, 20000));
       }
     } catch (error) {
-      console.error(`Failed to add step ${i} to task ${task.id}:`, error);
+      // Error is handled silently
     }
   }
-  
-  console.log(`Completed processing for task: ${task.id} - ${task.name}`);
 }
 
 // Listen for messages from the main thread
@@ -91,7 +142,6 @@ self.onmessage = async (event: MessageEvent) => {
   const taskData: TaskData = event.data;
   
   if (!taskData || !taskData.id) {
-    console.error('Invalid task data received:', taskData);
     self.postMessage({ error: 'Invalid task data' });
     return;
   }
@@ -107,7 +157,6 @@ self.onmessage = async (event: MessageEvent) => {
       message: `Successfully processed task ${taskData.id}`
     });
   } catch (error) {
-    console.error(`Error processing task ${taskData.id}:`, error);
     self.postMessage({ 
       status: 'error', 
       taskId: taskData.id,
