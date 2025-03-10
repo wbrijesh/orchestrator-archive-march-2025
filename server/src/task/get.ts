@@ -15,7 +15,7 @@ export async function getTaskByIdHandler(c: Context) {
       return c.json({ error: 'Task not found or unauthorized' }, 404);
     }
     
-    // Add browser replay URL to the response
+    // Add browser replay URL to the response if browser_session_id exists
     if (task.browser_session_id) {
       task.browser_replay_url = getBrowserbaseReplayUrl(task.browser_session_id as string);
     }
@@ -35,7 +35,7 @@ export async function getAllTasksHandler(c: Context) {
     // Get all tasks for user
     const tasks = await taskQueries.getAllTasks(user.userId);
 
-    // Add browser replay URLs to the response
+    // Add browser replay URLs to the response if browser_session_id exists
     const tasksWithReplayUrls = tasks.map(task => {
       if (task.browser_session_id) {
         return {

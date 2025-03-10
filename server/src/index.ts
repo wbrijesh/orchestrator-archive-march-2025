@@ -13,8 +13,11 @@ import { getUserDataHandler } from "./user/user";
 import { createTaskHandler } from "./task/create";
 import { getTaskByIdHandler, getAllTasksHandler } from "./task/get";
 import { deleteTaskHandler } from "./task/delete";
-import { getStepsForTaskHandler, createStepProgrammaticHandler } from "./task/steps";
-import { updateTaskHandler } from "./task/update";
+import {
+  getStepsForTaskHandler,
+  createStepProgrammaticHandler,
+} from "./task/steps";
+import { updateTaskHandler, UpdateTaskStatusHandler } from "./task/update";
 
 dotenv.config();
 
@@ -65,9 +68,26 @@ app.delete("/tasks/:id", authMiddleware, deleteTaskHandler);
 app.get("/tasks/:taskId/steps", authMiddleware, getStepsForTaskHandler);
 
 // Programmatic step routes with API key middleware
-app.post("/programmatic/tasks/:taskId/steps", programmaticMiddleware, createStepProgrammaticHandler);
-app.get("/programmatic/tasks/:taskId/steps", programmaticMiddleware, getStepsForTaskHandler);
-app.patch("/programmatic/tasks/:taskId", programmaticMiddleware, updateTaskHandler);
+app.post(
+  "/programmatic/tasks/:taskId/steps",
+  programmaticMiddleware,
+  createStepProgrammaticHandler,
+);
+app.get(
+  "/programmatic/tasks/:taskId/steps",
+  programmaticMiddleware,
+  getStepsForTaskHandler,
+);
+app.patch(
+  "/programmatic/tasks/:taskId",
+  programmaticMiddleware,
+  updateTaskHandler,
+);
+app.patch(
+  "/programmatic/tasks/:taskId/status",
+  programmaticMiddleware,
+  UpdateTaskStatusHandler,
+);
 
 // Start the server
 const port = 4000;

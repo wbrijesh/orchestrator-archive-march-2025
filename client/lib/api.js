@@ -147,6 +147,10 @@ export const api = {
       return apiRequest(`${API_URL}/tasks/${taskId}`, withAuth({
         method: 'DELETE'
       }));
+    },
+    
+    getSteps: async (taskId) => {
+      return apiRequest(`${API_URL}/tasks/${taskId}/steps`, withAuth());
     }
   }
 };
