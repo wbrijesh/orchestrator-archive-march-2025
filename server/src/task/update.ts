@@ -129,22 +129,7 @@ export async function updateTaskBrowserSessionHandler(c: Context) {
     const taskId = c.req.param("taskId");
     const {
       browser_session_id,
-      browser_created_at,
-      browser_updated_at,
-      browser_project_id,
-      browser_started_at,
-      browser_ended_at,
-      browser_expires_at,
-      browser_status,
-      browser_proxy_bytes,
-      browser_avg_cpu_usage,
-      browser_memory_usage,
-      browser_keep_alive,
-      browser_context_id,
-      browser_region,
       browser_connect_url,
-      browser_selenium_remote_url,
-      browser_signing_key,
     } = await c.req.json();
 
     // Check if task exists
@@ -173,22 +158,7 @@ export async function updateTaskBrowserSessionHandler(c: Context) {
     // Update browser session fields directly
     const browserSessionFields = {
       browser_session_id,
-      browser_created_at,
-      browser_updated_at,
-      browser_project_id,
-      browser_started_at,
-      browser_ended_at,
-      browser_expires_at,
-      browser_status,
-      browser_proxy_bytes,
-      browser_avg_cpu_usage,
-      browser_memory_usage,
-      browser_keep_alive,
-      browser_context_id,
-      browser_region,
       browser_connect_url,
-      browser_selenium_remote_url,
-      browser_signing_key,
     };
 
     console.log(
@@ -203,24 +173,16 @@ export async function updateTaskBrowserSessionHandler(c: Context) {
     );
 
     if (rowsAffected === 0) {
-      return c.json(
-        { error: "Failed to update browser session information" },
-        500,
-      );
+      return c.json({ error: "Failed to update browser session" }, 500);
     }
 
-    // Get the updated task data
-    const updatedTask = await taskQueries.getTaskById(taskId, userId);
-
     return c.json({
-      message: "Browser session information updated successfully",
-      task: updatedTask,
+      message: "Browser session updated successfully",
+      browser_session_id: browserSessionFields.browser_session_id,
+      browser_connect_url: browserSessionFields.browser_connect_url,
     });
   } catch (error) {
-    console.error("Error updating browser session information:", error);
-    return c.json(
-      { error: "Failed to update browser session information" },
-      500,
-    );
+    console.error("Error updating browser session:", error);
+    return c.json({ error: "Failed to update browser session" }, 500);
   }
 }
