@@ -113,6 +113,75 @@ export const taskQueries = {
 
     return result.rowsAffected;
   },
+
+  updateTaskBrowserSession: async (
+    taskId: string,
+    userId: number,
+    browserSessionFields: {
+      browser_session_id: string;
+      browser_created_at: string;
+      browser_updated_at: string;
+      browser_project_id: string;
+      browser_started_at: string;
+      browser_ended_at: string;
+      browser_expires_at: string;
+      browser_status: string;
+      browser_proxy_bytes: string;
+      browser_avg_cpu_usage: string;
+      browser_memory_usage: string;
+      browser_keep_alive: string;
+      browser_context_id: string;
+      browser_region: string;
+      browser_connect_url: string;
+      browser_selenium_remote_url: string;
+      browser_signing_key: string;
+    },
+  ) => {
+    const result = await db.execute({
+      sql: `UPDATE tasks
+            SET browser_session_id = ?,
+                browser_created_at = ?,
+                browser_updated_at = ?,
+                browser_project_id = ?,
+                browser_started_at = ?,
+                browser_ended_at = ?,
+                browser_expires_at = ?,
+                browser_status = ?,
+                browser_proxy_bytes = ?,
+                browser_avg_cpu_usage = ?,
+                browser_memory_usage = ?,
+                browser_keep_alive = ?,
+                browser_context_id = ?,
+                browser_region = ?,
+                browser_connect_url = ?,
+                browser_selenium_remote_url = ?,
+                browser_signing_key = ?
+            WHERE id = ? AND user_id = ?`,
+      args: [
+        browserSessionFields.browser_session_id,
+        browserSessionFields.browser_created_at,
+        browserSessionFields.browser_updated_at,
+        browserSessionFields.browser_project_id,
+        browserSessionFields.browser_started_at,
+        browserSessionFields.browser_ended_at,
+        browserSessionFields.browser_expires_at,
+        browserSessionFields.browser_status,
+        browserSessionFields.browser_proxy_bytes,
+        browserSessionFields.browser_avg_cpu_usage,
+        browserSessionFields.browser_memory_usage,
+        browserSessionFields.browser_keep_alive,
+        browserSessionFields.browser_context_id,
+        browserSessionFields.browser_region,
+        browserSessionFields.browser_connect_url,
+        browserSessionFields.browser_selenium_remote_url,
+        browserSessionFields.browser_signing_key,
+        taskId,
+        userId,
+      ],
+    });
+
+    return result.rowsAffected;
+  },
 };
 
 export const stepQueries = {

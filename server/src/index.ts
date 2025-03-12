@@ -17,7 +17,11 @@ import {
   getStepsForTaskHandler,
   createStepProgrammaticHandler,
 } from "./task/steps";
-import { updateTaskHandler, UpdateTaskStatusHandler } from "./task/update";
+import {
+  updateTaskHandler,
+  UpdateTaskStatusHandler,
+  updateTaskBrowserSessionHandler,
+} from "./task/update";
 
 dotenv.config();
 
@@ -87,6 +91,11 @@ app.patch(
   "/programmatic/tasks/:taskId/status",
   programmaticMiddleware,
   UpdateTaskStatusHandler,
+);
+app.patch(
+  "/programmatic/tasks/:taskId/browser-session",
+  programmaticMiddleware,
+  updateTaskBrowserSessionHandler,
 );
 
 // Start the server

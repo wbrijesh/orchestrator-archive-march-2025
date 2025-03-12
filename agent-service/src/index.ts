@@ -1,83 +1,124 @@
-import { Hono } from "hono";
 import "dotenv/config";
+import express, { Request, Response, NextFunction } from "express";
+import * as path from "path";
+import { fileURLToPath } from "url";
+import { TaskData } from "./ai/task-validation";
+import * as fs from "fs";
+import * as child_process from "child_process";
 
-const app = new Hono();
+// Get the current directory name in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Configure simple CORS
-app.use("*", async (c, next) => {
-  c.header("Access-Control-Allow-Origin", "http://localhost:4000");
-  c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  c.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, x-api-key",
-  );
-  c.header("Access-Control-Allow-Credentials", "true");
+// Create the express app
+const app: express.Application = express();
 
-  if (c.req.method === "OPTIONS") {
-    return c.text("");
+// Middleware for parsing JSON
+app.use(express.json());
+
+// CORS middleware - implemented inline to avoid type issues
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:4000");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
   }
 
-  await next();
+  next();
 });
 
-const activeWorkers = new Map<string, Worker>();
+const activeWorkers = new Map<string, child_process.ChildProcess>();
 
-app.get("/health", (c) => c.json({ status: "ok" }));
+// Health endpoint
+app.get("/health", (req: Request, res: Response) => {
+  res.json({ status: "ok" });
+});
 
-app.post("/tasks", async (c) => {
+// Task processing endpoint 
+app.post("/tasks", (req: any, res: any) => {
   try {
-    const taskData = await c.req.json();
+    const taskData = req.body as TaskData;
 
     if (!taskData?.id) {
-      return c.json({ error: "Invalid task data" }, 400);
+      return res.status(400).json({ error: "Invalid task data" });
     }
 
     console.log(`Received task: ${taskData.id} - ${taskData.name}`);
 
     if (activeWorkers.has(taskData.id)) {
-      return c.json({
+      return res.json({
         message: "Task is already being processed",
         taskId: taskData.id,
       });
     }
 
-    const worker = new Worker("src/workers/task-worker.ts");
-
-    activeWorkers.set(taskData.id, worker);
-
-    // Use the correct type for the message event
-    worker.onmessage = (event: MessageEvent) => {
-      console.log(`Worker message for task ${taskData.id}:`, event.data);
-
-      if (event.data.status === "completed" || event.data.status === "error") {
-        activeWorkers.delete(taskData.id);
+    // Instead of using worker_threads with TypeScript files directly,
+    // we'll use a child process to handle the task
+    const taskProcess = child_process.fork(
+      path.resolve(__dirname, "workers/task-worker.ts"),
+      [], // args
+      {
+        execPath: path.resolve(process.cwd(), "node_modules/.bin/tsx"),
+        env: process.env
       }
-    };
+    );
 
-    // Use the correct error event handler
-    worker.onerror = (event: ErrorEvent) => {
+    // Store the process in our active workers map
+    activeWorkers.set(taskData.id, taskProcess);
+
+    // Handle messages from the child process
+    taskProcess.on("message", (data: any) => {
+      console.log(`Worker message for task ${taskData.id}:`, data);
+
+      if (data && (data.status === "completed" || data.status === "error")) {
+        activeWorkers.delete(taskData.id);
+        taskProcess.kill();
+      }
+    });
+
+    // Handle errors from the child process
+    taskProcess.on("error", (error) => {
       console.error(
         `Worker for task ${taskData.id} encountered an error:`,
-        event,
+        error,
       );
       activeWorkers.delete(taskData.id);
-    };
+      taskProcess.kill();
+    });
 
-    worker.postMessage(taskData);
+    // Handle exit of the child process
+    taskProcess.on("exit", (code) => {
+      console.log(`Worker for task ${taskData.id} exited with code ${code}`);
+      activeWorkers.delete(taskData.id);
+    });
 
-    return c.json({ message: "Task processing started", taskId: taskData.id });
+    // Send the task data to the child process
+    taskProcess.send(taskData);
+
+    return res.json({ message: "Task processing started", taskId: taskData.id });
   } catch (error) {
     console.error("Error processing task:", error);
-    return c.json({ error: "Failed to process task" }, 500);
+    return res.status(500).json({ error: "Failed to process task" });
   }
 });
 
-app.get("/status", (c) => {
+// Status endpoint
+app.get("/status", (req: Request, res: Response) => {
   const activeTaskIds = Array.from(activeWorkers.keys());
-  return c.json({ activeWorkers: activeTaskIds.length, tasks: activeTaskIds });
+  res.json({ activeWorkers: activeTaskIds.length, tasks: activeTaskIds });
 });
 
-export default {
-  port: 6000,
-  fetch: app.fetch,
-};
+// Start the server
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 6000;
+
+console.log(`Starting server on port ${PORT}...`);
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+
+// Export for testing
+export default app;

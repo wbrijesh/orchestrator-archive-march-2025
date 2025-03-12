@@ -1,19 +1,31 @@
 {
   "name": "agent-service",
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "build": "tsc",
+    "build:dev": "tsc && node dist/index.js",
+    "build:watch": "tsc --watch",
+    "start": "node dist/index.js"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^1.1.15",
-    "ai": "^4.1.47",
-    "axios": "^1.8.1",
+    "@ai-sdk/openai": "^1.2.2",
+    "@browserbasehq/sdk": "^2.3.0",
+    "@hono/node-server": "^1.13.8",
+    "ai": "^4.1.54",
+    "axios": "^1.8.2",
     "dotenv": "^16.4.7",
-    "hono": "^4.7.2",
+    "express": "^4.21.2",
+    "hono": "^4.7.4",
+    "playwright": "^1.51.0",
+    "playwright-core": "^1.51.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/express": "^5.0.0",
     "@types/node": "^22.13.8",
+    "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }
