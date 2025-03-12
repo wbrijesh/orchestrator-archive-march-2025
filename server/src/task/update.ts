@@ -191,6 +191,11 @@ export async function updateTaskBrowserSessionHandler(c: Context) {
       browser_signing_key,
     };
 
+    console.log(
+      "setting session details, the id is: ",
+      browserSessionFields.browser_session_id,
+    );
+
     const rowsAffected = await taskQueries.updateTaskBrowserSession(
       taskId,
       userId,

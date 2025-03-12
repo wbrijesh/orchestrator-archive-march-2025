@@ -16,7 +16,7 @@ const browserManager = {
 
     try {
       // Map browser session to individual fields
-      const browserSessionFields = mapBrowserSessionToFields(session);
+      let browserSessionFields = mapBrowserSessionToFields(session);
 
       // Call the new API endpoint to update the task with browser session data
       await axios.patch(

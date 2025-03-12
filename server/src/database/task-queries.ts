@@ -137,6 +137,36 @@ export const taskQueries = {
       browser_signing_key: string;
     },
   ) => {
+    // Validate that all browser session fields are provided
+    const requiredFields = [
+      "browser_session_id",
+      "browser_created_at",
+      "browser_updated_at",
+      "browser_project_id",
+      "browser_started_at",
+      "browser_ended_at",
+      "browser_expires_at",
+      "browser_status",
+      "browser_proxy_bytes",
+      "browser_avg_cpu_usage",
+      "browser_memory_usage",
+      "browser_keep_alive",
+      "browser_context_id",
+      "browser_region",
+      "browser_connect_url",
+      "browser_selenium_remote_url",
+      "browser_signing_key",
+    ];
+
+    for (const field of requiredFields) {
+      if (
+        browserSessionFields[field as keyof typeof browserSessionFields] ===
+        undefined
+      ) {
+        throw new Error(`Missing required browser session field: ${field}`);
+      }
+    }
+
     const result = await db.execute({
       sql: `UPDATE tasks
             SET browser_session_id = ?,
