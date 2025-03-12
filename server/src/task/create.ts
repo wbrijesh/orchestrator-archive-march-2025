@@ -1,6 +1,21 @@
 import { Context } from "hono";
 import { taskQueries } from "../database/task-queries";
-import { sendTaskToAgentService } from "../utils/agent";
+import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const AGENT_SERVICE_URL = process.env.AGENT_SERVICE_URL;
+
+export async function sendTaskToAgentService(taskData: any): Promise<void> {
+  try {
+    await axios.post(`${AGENT_SERVICE_URL}/tasks`, taskData);
+    console.log(`Task ${taskData.id} sent to agent service`);
+  } catch (error) {
+    console.error("Error sending task to agent service:", error);
+    // We don't throw the error here to avoid affecting the main flow
+  }
+}
 
 // Create task handler
 export async function createTaskHandler(c: Context) {

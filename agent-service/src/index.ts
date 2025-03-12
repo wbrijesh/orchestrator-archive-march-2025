@@ -56,10 +56,10 @@ app.post("/tasks", (req: any, res: any) => {
       });
     }
 
-    // Instead of using worker_threads with TypeScript files directly,
-    // we'll use a child process to handle the task
+    // Use the new worker-entry.ts as the clean entry point for our child process
+    // This lightweight entry point delegates to the properly modularized components
     const taskProcess = child_process.fork(
-      path.resolve(__dirname, "workers/task-worker.ts"),
+      path.resolve(__dirname, "workers/worker-entry.ts"),
       [], // args
       {
         execPath: path.resolve(process.cwd(), "node_modules/.bin/tsx"),

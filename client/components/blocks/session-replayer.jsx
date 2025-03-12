@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { Pause } from 'lucide-react';
-import { Play } from 'lucide-react';
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import rrwebPlayer from 'rrweb-player';
-import 'rrweb-player/dist/style.css';
+import { Pause } from "lucide-react";
+import { Play } from "lucide-react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import rrwebPlayer from "rrweb-player";
+import "rrweb-player/dist/style.css";
 
-const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
+const RichSessionPlayer = ({ events, aspectRatio = "16/9" }) => {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
   const timelineRef = useRef(null);
   const progressIntervalRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
@@ -24,30 +24,36 @@ const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   }, []);
 
-  const handleTimelineClick = useCallback((e) => {
-    if (!playerRef.current || !timelineRef.current) return;
-    
-    const rect = timelineRef.current.getBoundingClientRect();
-    let clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    const clickPosition = clickX / rect.width;
-    const seekTime = totalTime * clickPosition;
-    
-    try {
-      if (playerRef.current.goto) {
-        playerRef.current.goto(seekTime);
-      } else if (playerRef.current.replayer && playerRef.current.replayer.goto) {
-        playerRef.current.replayer.goto(seekTime);
+  const handleTimelineClick = useCallback(
+    (e) => {
+      if (!playerRef.current || !timelineRef.current) return;
+
+      const rect = timelineRef.current.getBoundingClientRect();
+      let clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const clickPosition = clickX / rect.width;
+      const seekTime = totalTime * clickPosition;
+
+      try {
+        if (playerRef.current.goto) {
+          playerRef.current.goto(seekTime);
+        } else if (
+          playerRef.current.replayer &&
+          playerRef.current.replayer.goto
+        ) {
+          playerRef.current.replayer.goto(seekTime);
+        }
+
+        setCurrentTime(seekTime);
+        setProgress(Math.max(0, Math.min(clickPosition * 100, 100)));
+      } catch (e) {
+        console.error("Error seeking:", e);
       }
-      
-      setCurrentTime(seekTime);
-      setProgress(Math.max(0, Math.min(clickPosition * 100, 100)));
-    } catch (e) {
-      console.error('Error seeking:', e);
-    }
-  }, [totalTime]);
+    },
+    [totalTime],
+  );
 
   const togglePlayPause = useCallback(() => {
     if (!playerRef.current) return;
@@ -64,7 +70,8 @@ const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
         setIsPlaying(true);
       } else if (playerRef.current.replayer) {
         if (isPlaying) {
-          playerRef.current.replayer.pause && playerRef.current.replayer.pause();
+          playerRef.current.replayer.pause &&
+            playerRef.current.replayer.pause();
           setIsPlaying(false);
         } else {
           playerRef.current.replayer.play && playerRef.current.replayer.play();
@@ -72,34 +79,40 @@ const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
         }
       }
     } catch (e) {
-      console.error('Error toggling play state:', e);
+      console.error("Error toggling play state:", e);
     }
   }, [isPlaying]);
 
-  const handleMouseDown = useCallback((e) => {
-    setIsDragging(true);
-    handleTimelineClick(e);
-  }, [handleTimelineClick]);
+  const handleMouseDown = useCallback(
+    (e) => {
+      setIsDragging(true);
+      handleTimelineClick(e);
+    },
+    [handleTimelineClick],
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
 
-  const handleMouseMove = useCallback((e) => {
-    if (isDragging) {
-      handleTimelineClick(e);
-    }
-  }, [isDragging, handleTimelineClick]);
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (isDragging) {
+        handleTimelineClick(e);
+      }
+    },
+    [isDragging, handleTimelineClick],
+  );
 
   useEffect(() => {
     if (playerRef.current) {
       try {
-        if (typeof playerRef.current.destroy === 'function') {
+        if (typeof playerRef.current.destroy === "function") {
           playerRef.current.destroy();
         }
         playerRef.current = null;
       } catch (e) {
-        console.error('Error cleaning up previous player:', e);
+        console.error("Error cleaning up previous player:", e);
       }
     }
 
@@ -124,7 +137,7 @@ const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
 
       setTimeout(() => {
         try {
-          containerRef.current.innerHTML = '';
+          containerRef.current.innerHTML = "";
 
           const player = new rrwebPlayer({
             target: containerRef.current,
@@ -137,10 +150,10 @@ const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
               showController: false,
               speedOption: [1],
               css: {
-                'background-color': 'transparent',
-                'border-radius': '0.5rem'
-              }
-            }
+                "background-color": "transparent",
+                "border-radius": "0.5rem",
+              },
+            },
           });
 
           playerRef.current = player;
@@ -155,7 +168,11 @@ const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
                 if (totalTime > 0) {
                   setProgress((time / totalTime) * 100);
                 }
-              } else if (player.iframe && player.iframe.contentWindow && player.iframe.contentWindow.replayer) {
+              } else if (
+                player.iframe &&
+                player.iframe.contentWindow &&
+                player.iframe.contentWindow.replayer
+              ) {
                 const replayer = player.iframe.contentWindow.replayer;
                 if (replayer.getCurrentTime) {
                   const time = replayer.getCurrentTime();
@@ -165,41 +182,42 @@ const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
                   }
                 }
               } else if (player.replayer) {
-                const time = player.replayer.getCurrentTime ? 
-                  player.replayer.getCurrentTime() : 
-                  player.replayer.timer ? player.replayer.timer.elapsedTime : 0;
-                
+                const time = player.replayer.getCurrentTime
+                  ? player.replayer.getCurrentTime()
+                  : player.replayer.timer
+                    ? player.replayer.timer.elapsedTime
+                    : 0;
+
                 setCurrentTime(time);
                 if (totalTime > 0) {
                   setProgress((time / totalTime) * 100);
                 }
               }
             } catch (e) {
-              console.warn('Error updating progress:', e);
+              console.warn("Error updating progress:", e);
             }
           }, 100);
-          
         } catch (error) {
-          console.error('Error initializing player:', error);
-          setError('Failed to initialize the session replay player.');
+          console.error("Error initializing player:", error);
+          setError("Failed to initialize the session replay player.");
           setIsLoading(false);
         }
       }, 100);
     } catch (error) {
-      console.error('Error in setting up player:', error);
-      setError('Failed to set up the session replay player.');
+      console.error("Error in setting up player:", error);
+      setError("Failed to set up the session replay player.");
       setIsLoading(false);
     }
 
     return () => {
       if (playerRef.current) {
         try {
-          if (typeof playerRef.current.destroy === 'function') {
+          if (typeof playerRef.current.destroy === "function") {
             playerRef.current.destroy();
           }
           playerRef.current = null;
         } catch (e) {
-          console.error('Error during cleanup:', e);
+          console.error("Error during cleanup:", e);
         }
       }
 
@@ -211,21 +229,21 @@ const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
   }, [events, totalTime]);
 
   useEffect(() => {
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
 
     return () => {
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
     };
   }, [handleMouseUp, handleMouseMove]);
 
   return (
     <div className="rich-session-player w-full">
-      <div 
+      <div
         className="relative overflow-hidden rounded-lg"
-        style={{ 
-          width: '100%',
+        style={{
+          width: "100%",
           aspectRatio: aspectRatio,
         }}
       >
@@ -237,29 +255,55 @@ const RichSessionPlayer = ({ events, aspectRatio = '16/9' }) => {
             </div>
           </div>
         )}
-        
-        <div 
-          ref={containerRef} 
+
+        <div
+          ref={containerRef}
           className="w-full h-full"
-          style={{ visibility: isLoading ? 'hidden' : 'visible' }}
+          style={{ visibility: isLoading ? "hidden" : "visible" }}
         />
-        
+
         {(!events || events.length === 0) && !isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-gray-500">No session recording data available.</p>
+            <p className="text-gray-500">
+              No session recording data available.
+            </p>
           </div>
         )}
       </div>
       {!isLoading && events && events.length > 0 && (
-        <div className="mt-3 rounded-lg mt-6 flex items-center space-x-4">
-          <button className="flex-shrink-0 focus:outline-none" onClick={togglePlayPause}>
-            {isPlaying ? <Pause className='h-5 w-5 fill-current' /> : <Play className='h-5 w-5 fill-current' />}
+        <div className="rounded-lg mt-6 flex items-center space-x-4">
+          <button
+            className="flex-shrink-0 focus:outline-none"
+            onClick={togglePlayPause}
+          >
+            {isPlaying ? (
+              <Pause className="h-5 w-5 fill-current" />
+            ) : (
+              <Play className="h-5 w-5 fill-current" />
+            )}
           </button>
-          <div className="flex-grow relative h-2 bg-gray-300 rounded-full cursor-pointer" ref={timelineRef} onClick={handleTimelineClick} onMouseDown={handleMouseDown}>
-            <div className="absolute top-0 left-0 h-full bg-black rounded-full" style={{ width: `${progress}%` }} />
-            <div className="absolute top-1/2 h-4 w-4 bg-white border-2 border-black rounded-full shadow cursor-pointer" style={{ left: `${Math.max(0, Math.min(progress, 100))}%`, transform: 'translateX(-50%) translateY(-50%)', zIndex: 10 }} />
+          <div
+            className="flex-grow relative h-2 bg-gray-300 rounded-full cursor-pointer"
+            ref={timelineRef}
+            onClick={handleTimelineClick}
+            onMouseDown={handleMouseDown}
+          >
+            <div
+              className="absolute top-0 left-0 h-full bg-black rounded-full"
+              style={{ width: `${progress}%` }}
+            />
+            <div
+              className="absolute top-1/2 h-4 w-4 bg-white border-2 border-black rounded-full shadow cursor-pointer"
+              style={{
+                left: `${Math.max(0, Math.min(progress, 100))}%`,
+                transform: "translateX(-50%) translateY(-50%)",
+                zIndex: 10,
+              }}
+            />
           </div>
-          <div className="flex-shrink-0 text-sm text-gray-600">{formatTime(currentTime)} / {formatTime(totalTime)}</div>
+          <div className="flex-shrink-0 text-sm text-gray-600">
+            {formatTime(currentTime)} / {formatTime(totalTime)}
+          </div>
         </div>
       )}
     </div>
