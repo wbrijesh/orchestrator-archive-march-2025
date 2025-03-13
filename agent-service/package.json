@@ -10,6 +10,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@ai-sdk/google": "^1.1.25",
     "@ai-sdk/openai": "^1.2.2",
     "@browserbasehq/sdk": "^2.3.0",
     "@hono/node-server": "^1.13.8",

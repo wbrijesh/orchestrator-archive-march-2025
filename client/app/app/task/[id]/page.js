@@ -22,6 +22,7 @@ export default function TaskDetails({ params }) {
   const taskStepsIntervalRef = useRef(null);
   const [taskSteps, setTaskSteps] = useState([]);
   const [taskCompleted, setTaskCompleted] = useState(false);
+  const [browserSessionCreated, setBrowserSessionCreated] = useState(false);
 
   useEffect(() => {
     // Fetch task details from /tasks/:id endpoint
@@ -73,6 +74,15 @@ export default function TaskDetails({ params }) {
         if (data.some((step) => step.name === "Task Completed")) {
           setTaskCompleted(true);
           stopPollingSteps();
+        }
+
+        // Check if Browser Session Created step exists
+        if (
+          !browserSessionCreated &&
+          data.some((step) => step.name === "Browser Session Created")
+        ) {
+          setBrowserSessionCreated(true);
+          fetchTask();
         }
       } catch (error) {
         console.error("Error fetching task steps:", error);
@@ -133,7 +143,7 @@ export default function TaskDetails({ params }) {
       stopPollingDetails();
       stopPollingSteps();
     };
-  }, [unwrappedParams.id, router]);
+  }, [unwrappedParams.id, router, browserSessionCreated]);
 
   // Format date for display
   const formatDate = (dateString) => {
