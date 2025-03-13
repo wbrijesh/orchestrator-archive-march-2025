@@ -20,12 +20,12 @@ export async function createBrowserSession(
       }),
     });
 
-    // Create the session
+    // Create the session (now also fetches the live view URL)
     console.log(`Creating browser session for task ${taskId}...`);
     const session = await browserManager.createNewSession({ taskId });
     console.log(`Browser session created for task ${taskId}: ${session.id}`);
 
-    // Record successful creation
+    // Record successful creation, including live view URL if available
     await addStepToTask(taskId, {
       name: "Browser Session Created",
       data: JSON.stringify({

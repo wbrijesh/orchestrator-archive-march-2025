@@ -147,7 +147,7 @@ export async function UpdateTaskStatusHandler(c: Context) {
 export async function updateTaskBrowserSessionHandler(c: Context) {
   try {
     const taskId = c.req.param("taskId");
-    const { browser_session_id, browser_connect_url } = await c.req.json();
+    const { browser_session_id, browser_connect_url, live_view_url } = await c.req.json();
 
     if (!browser_session_id || !browser_connect_url) {
       return c.json({
@@ -182,7 +182,7 @@ export async function updateTaskBrowserSessionHandler(c: Context) {
     await taskQueries.updateTaskBrowserSession(
       taskId,
       userId,
-      { browser_session_id, browser_connect_url },
+      { browser_session_id, browser_connect_url, live_view_url },
     );
 
     // Get the updated task data
@@ -197,6 +197,7 @@ export async function updateTaskBrowserSessionHandler(c: Context) {
         user_id: userId,
         browser_session_id,
         browser_connect_url,
+        live_view_url,
         timestamp: new Date().toISOString()
       }
     });

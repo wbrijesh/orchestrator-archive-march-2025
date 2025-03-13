@@ -10,13 +10,18 @@ const SERVER_URL = process.env.SERVER_URL || "http://localhost:4000";
 
 const browserManager = {
   async createNewSession({ taskId }: { taskId: string }) {
+    // Create the browser session
     const session = await bb.sessions.create({
       projectId: process.env.BROWSERBASE_PROJECT_ID!,
     });
 
     try {
-      // Map browser session to individual fields
-      let browserSessionFields = mapBrowserSessionToFields(session);
+      // Separately fetch the live view URL
+      const liveViewLinks = await bb.sessions.debug(session.id);
+      const liveViewUrl = liveViewLinks.debuggerFullscreenUrl;
+
+      // Map browser session to individual fields including the live view URL
+      const browserSessionFields = mapBrowserSessionToFields(session, liveViewUrl);
 
       // Call the new API endpoint to update the task with browser session data
       await axios.patch(

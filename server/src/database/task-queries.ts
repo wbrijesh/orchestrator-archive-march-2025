@@ -120,6 +120,7 @@ export const taskQueries = {
     browserSessionFields: {
       browser_session_id: string;
       browser_connect_url: string;
+      live_view_url?: string;
     },
   ) => {
     // Validate that all browser session fields are provided
@@ -140,11 +141,13 @@ export const taskQueries = {
     const result = await db.execute({
       sql: `UPDATE tasks
             SET browser_session_id = ?,
-                browser_connect_url = ?
+                browser_connect_url = ?,
+                live_view_url = ?
             WHERE id = ? AND user_id = ?`,
       args: [
         browserSessionFields.browser_session_id,
         browserSessionFields.browser_connect_url,
+        browserSessionFields.live_view_url || null,
         taskId,
         userId,
       ],
