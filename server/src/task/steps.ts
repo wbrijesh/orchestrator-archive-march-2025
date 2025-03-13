@@ -1,5 +1,7 @@
 import { Context } from 'hono';
 import { taskQueries, stepQueries } from '../database/task-queries';
+import { posthogClient } from '../index';
+import crypto from 'crypto';
 
 // Common function to check if user has access to a task
 async function checkTaskAccess(taskId: string, user?: any): Promise<boolean> {
@@ -27,6 +29,18 @@ export async function getStepsForTaskHandler(c: Context) {
 
     // Get steps for task
     const steps = await stepQueries.getStepsForTask(taskId);
+
+    // Track steps fetched event
+    posthogClient.capture({
+      distinctId: crypto.randomUUID(),
+      event: 'steps_fetched',
+      properties: {
+        task_id: taskId,
+        user_id: user?.userId,
+        step_count: steps.length.toString(),
+        timestamp: new Date().toISOString()
+      }
+    });
 
     return c.json(steps);
   } catch (error) {
@@ -56,6 +70,17 @@ export async function createStepProgrammaticHandler(c: Context) {
     // Ensure sequence is a number
     const sequence = typeof nextSequence === 'number' ? nextSequence : 1;
     const step = await stepQueries.createStep(taskId, sequence, name, data);
+
+    // Track step created event
+    posthogClient.capture({
+      distinctId: crypto.randomUUID(),
+      event: 'step_created',
+      properties: {
+        task_id: taskId,
+        step_name: name,
+        timestamp: new Date().toISOString()
+      }
+    });
 
     return c.json(step);
   } catch (error) {

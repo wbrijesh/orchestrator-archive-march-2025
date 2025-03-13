@@ -2,6 +2,8 @@ import { Context } from 'hono';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { userQueries } from '../database/user-queries';
+import { posthogClient } from '../index';
+import crypto from 'crypto';
 
 // Register endpoint handler
 export async function registerHandler(c: Context) {
@@ -37,6 +39,18 @@ export async function registerHandler(c: Context) {
     // Create new user
     await userQueries.createUser(email, firstName, lastName, hashedPassword);
     console.log('User registered successfully');
+
+    // Track registration event
+    posthogClient.capture({
+      distinctId: crypto.randomUUID(),
+      event: 'user_registered',
+      properties: {
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        timestamp: new Date().toISOString()
+      }
+    });
 
     return c.json({ message: 'User registered successfully' }, 201);
   } catch (error) {
@@ -82,6 +96,16 @@ export async function loginHandler(c: Context) {
       process.env.JWT_SECRET!,
       { expiresIn: '24h' }
     );
+
+    // Track login event
+    posthogClient.capture({
+      distinctId: crypto.randomUUID(),
+      event: 'user_logged_in',
+      properties: {
+        user_id: user.id,
+        timestamp: new Date().toISOString()
+      }
+    });
 
     return c.json({ token });
   } catch (error) {

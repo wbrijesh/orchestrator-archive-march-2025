@@ -1,5 +1,7 @@
 import { Context } from "hono";
 import { taskQueries } from "../database/task-queries";
+import { posthogClient } from '../index';
+import crypto from 'crypto';
 
 // Get task by ID handler
 export async function getTaskByIdHandler(c: Context) {
@@ -18,6 +20,17 @@ export async function getTaskByIdHandler(c: Context) {
     if (task.browser_session_id) {
       task.browser_replay_url = `https://browserbase.com/sessions/${task.browser_session_id}`;
     }
+
+    // Track task retrieval event
+    posthogClient.capture({
+      distinctId: crypto.randomUUID(),
+      event: 'task_retrieved',
+      properties: {
+        task_id: taskId,
+        user_id: user.userId,
+        timestamp: new Date().toISOString()
+      }
+    });
 
     return c.json(task);
   } catch (error) {
@@ -43,6 +56,17 @@ export async function getAllTasksHandler(c: Context) {
         };
       }
       return task;
+    });
+
+    // Track tasks retrieval event
+    posthogClient.capture({
+      distinctId: crypto.randomUUID(),
+      event: 'all_tasks_retrieved',
+      properties: {
+        task_count: tasks.length,
+        user_id: user.userId,
+        timestamp: new Date().toISOString()
+      }
     });
 
     return c.json(tasksWithReplayUrls);

@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import dotenv from "dotenv";
+import { PostHog } from 'posthog-node'
 import { authMiddleware, programmaticMiddleware } from "./middleware/auth";
 import { initDb } from "./database/init";
 
@@ -24,6 +25,12 @@ import {
 } from "./task/update";
 
 dotenv.config();
+
+// Initialize PostHog client
+export const posthogClient = new PostHog(
+    process.env.POSTHOG_API_KEY as string,
+    { host: "https://eu.i.posthog.com" }
+);
 
 // Initialize database tables
 initDb().catch(console.error);
@@ -102,7 +109,13 @@ app.patch(
 const port = 4000;
 console.log(`Server is running on port ${port}`);
 
-serve({
+const server = serve({
   fetch: app.fetch,
   port,
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+    await posthogClient.shutdown();
+    server.close();
 });

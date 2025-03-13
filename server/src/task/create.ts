@@ -2,6 +2,8 @@ import { Context } from "hono";
 import { taskQueries } from "../database/task-queries";
 import axios from "axios";
 import dotenv from "dotenv";
+import { posthogClient } from '../index';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -36,6 +38,18 @@ export async function createTaskHandler(c: Context) {
     // Send task data to agent service (don't await to avoid blocking)
     sendTaskToAgentService(taskData).catch((err) => {
       console.error("Failed to send task to agent service:", err);
+    });
+
+    // Track task creation event
+    posthogClient.capture({
+      distinctId: crypto.randomUUID(),
+      event: 'task_created',
+      properties: {
+        task_id: taskId,
+        task_name: name,
+        user_id: user.userId,
+        timestamp: new Date().toISOString()
+      }
     });
 
     // Return the created task

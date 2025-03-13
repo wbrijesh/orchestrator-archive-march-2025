@@ -18,7 +18,9 @@
     "dotenv": "^16.4.7",
     "hono": "^4.7.2",
     "jsonwebtoken": "^9.0.2",
-    "playwright-core": "^1.50.1"
+    "playwright-core": "^1.50.1",
+    "posthog-node": "^4.10.1",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

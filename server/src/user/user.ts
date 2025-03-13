@@ -1,5 +1,7 @@
 import { Context } from 'hono';
 import { userQueries } from '../database/user-queries';
+import { posthogClient } from '../index';
+import crypto from 'crypto';
 
 // Get user data handler
 export async function getUserDataHandler(c: Context) {
@@ -12,6 +14,16 @@ export async function getUserDataHandler(c: Context) {
     if (!userData) {
       return c.json({ error: 'User not found' }, 404);
     }
+
+    // Track user data retrieval event
+    posthogClient.capture({
+      distinctId: crypto.randomUUID(),
+      event: 'user_data_retrieved',
+      properties: {
+        user_id: user.userId,
+        timestamp: new Date().toISOString()
+      }
+    });
 
     return c.json({ user: userData });
   } catch (error) {
