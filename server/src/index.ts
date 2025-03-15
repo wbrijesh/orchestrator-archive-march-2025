@@ -2,7 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import dotenv from "dotenv";
-import { PostHog } from 'posthog-node'
+import { PostHog } from "posthog-node";
 import { authMiddleware, programmaticMiddleware } from "./middleware/auth";
 import { initDb } from "./database/init";
 
@@ -26,11 +26,24 @@ import {
 
 dotenv.config();
 
+const OBSERVABILITY_ENABLED = process.env.OBSERVABILITY_ENABLED === "true";
+
+const dummyPosthogClient = {
+  async capture(data: any) {
+    null;
+  },
+
+  async shutdown() {
+    null;
+  },
+};
+
 // Initialize PostHog client
-export const posthogClient = new PostHog(
-    process.env.POSTHOG_API_KEY as string,
-    { host: "https://eu.i.posthog.com" }
-);
+export const posthogClient = OBSERVABILITY_ENABLED
+  ? new PostHog(process.env.POSTHOG_API_KEY as string, {
+      host: "https://eu.i.posthog.com",
+    })
+  : dummyPosthogClient;
 
 // Initialize database tables
 initDb().catch(console.error);
@@ -115,7 +128,7 @@ const server = serve({
 });
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-    await posthogClient.shutdown();
-    server.close();
+process.on("SIGTERM", async () => {
+  await posthogClient.shutdown();
+  server.close();
 });

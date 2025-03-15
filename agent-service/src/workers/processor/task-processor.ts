@@ -1,10 +1,14 @@
 // Task processing logic
 import { TaskData, validateTask } from "../../ai/task-validation";
-import { addStepToTask, updateTaskStatus, updateTaskValidation } from "../api/task-api";
+import {
+  addStepToTask,
+  updateTaskStatus,
+  updateTaskValidation,
+} from "../api/task-api";
 import {
   createBrowserSession,
   connectToBrowser,
-  createBrowserPage,
+  useDefaultPage,
   navigateToUrl,
   takeScreenshot,
   closeBrowser,
@@ -98,16 +102,41 @@ export async function processTask(task: TaskData): Promise<void> {
       return;
     }
 
-    // Create a new page
+    // Use the default tab
     console.log(`Creating new page for task: ${task.id}`);
-    const page = await createBrowserPage(browser, task.id);
+    const page = await useDefaultPage(browser, task.id);
 
     // Navigate to Twitter
     console.log(`Navigating to Twitter for task: ${task.id}`);
     await navigateToUrl(page, task.id, "https://twitter.com");
 
     // Take a screenshot
-    await takeScreenshot(page, task.id, "Captured screenshot of Twitter homepage");
+    await takeScreenshot(
+      page,
+      task.id,
+      "Captured screenshot of Twitter homepage",
+    );
+
+    // Wait for 12 seconds after taking screenshot, sending updates every 3 seconds
+    const totalWaitTimeSeconds = 12;
+    for (
+      let secondsWaited = 0;
+      secondsWaited < totalWaitTimeSeconds;
+      secondsWaited += 3
+    ) {
+      // Add current wait status as a step
+      await addStepToTask(task.id, {
+        name: "Waiting",
+        data: JSON.stringify({
+          timestamp: new Date().toISOString(),
+          message: `Waited ${secondsWaited}/${totalWaitTimeSeconds} seconds`,
+        }),
+      });
+
+      // Wait for 3 seconds (or less for the final iteration)
+      const waitTime = Math.min(3, totalWaitTimeSeconds - secondsWaited);
+      await new Promise((resolve) => setTimeout(resolve, waitTime * 1000));
+    }
 
     // Close the browser
     await closeBrowser(browser, task.id);

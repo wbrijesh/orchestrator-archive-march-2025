@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import rrwebPlayer from "rrweb-player";
 import "rrweb-player/dist/style.css";
 
-const RichSessionPlayer = ({ events, aspectRatio = "16/9" }) => {
+const RichSessionPlayer = ({ events, aspectRatio = "16/10.5" }) => {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
   const timelineRef = useRef(null);
@@ -239,9 +239,9 @@ const RichSessionPlayer = ({ events, aspectRatio = "16/9" }) => {
   }, [handleMouseUp, handleMouseMove]);
 
   return (
-    <div className="rich-session-player w-full">
+    <div className="rich-session-player">
       <div
-        className="relative overflow-hidden rounded-lg"
+        className="relative overflow-hidden"
         style={{
           width: "100%",
           aspectRatio: aspectRatio,
@@ -258,8 +258,10 @@ const RichSessionPlayer = ({ events, aspectRatio = "16/9" }) => {
 
         <div
           ref={containerRef}
-          className="w-full h-full"
-          style={{ visibility: isLoading ? "hidden" : "visible" }}
+          className="h-full"
+          style={{
+            visibility: isLoading ? "hidden" : "visible",
+          }}
         />
 
         {(!events || events.length === 0) && !isLoading && (

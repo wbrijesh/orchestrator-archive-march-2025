@@ -1,14 +1,26 @@
-export async function GET() {
-  const options = {
-    method: "GET",
-    headers: {
-      "X-BB-API-Key": process.env.BROWSERBASE_API_KEY,
-    },
-  };
-
+export async function POST(request) {
   try {
+    // Parse the request body to get the session ID
+    const body = await request.json();
+    const sessionId = body.sessionId;
+
+    // Validate that sessionId exists
+    if (!sessionId) {
+      return Response.json(
+        { error: "Session ID is required" },
+        { status: 400 },
+      );
+    }
+
+    const options = {
+      method: "GET", // Note: We still use GET for the BrowserBase API call
+      headers: {
+        "X-BB-API-Key": process.env.BROWSERBASE_API_KEY,
+      },
+    };
+
     const response = await fetch(
-      "https://api.browserbase.com/v1/sessions/ccf679d2-dac1-46bd-a984-aaf980a7b054/recording",
+      `https://api.browserbase.com/v1/sessions/${sessionId}/recording`,
       options,
     );
 

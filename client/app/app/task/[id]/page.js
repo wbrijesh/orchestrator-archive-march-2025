@@ -7,6 +7,7 @@ import TopBar from "@/components/blocks/top-bar";
 import { useUser } from "@/context/UserContext";
 import SessionReplayer from "@/components/blocks/session-replayer";
 import Spinner from "@/components/ui/spinner";
+import SessionLivePlayer from "@/components/blocks/session-live-player";
 
 export default function TaskDetails({ params }) {
   const router = useRouter();
@@ -22,120 +23,136 @@ export default function TaskDetails({ params }) {
   const taskStepsIntervalRef = useRef(null);
   const [taskSteps, setTaskSteps] = useState([]);
   const [taskCompleted, setTaskCompleted] = useState(false);
-  const [browserSessionCreated, setBrowserSessionCreated] = useState(false);
+
+  // Fetch task details from /tasks/:id endpoint
+  const fetchTask = async () => {
+    try {
+      const response = await api.tasks.getById(unwrappedParams.id);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          setError("Task not found");
+        } else {
+          throw new Error("Failed to fetch task");
+        }
+        return;
+      }
+
+      const data = await response.json();
+      setTask(data);
+
+      // If task is valid, switch to polling steps
+      if (data && data.isTaskValid === "true") {
+        stopPollingDetails();
+        startPollingSteps();
+        setValidationError("");
+      } else if (data && data.isTaskValid === "false") {
+        // If task is invalid, show validation error with the reason
+        setValidationError(data.reason || "Task cannot be processed");
+        stopPollingDetails();
+      }
+    } catch (error) {
+      setError("Failed to fetch task details");
+      console.error("Error:", error);
+    }
+  };
+
+  // Fetch task steps from /tasks/:taskId/steps endpoint
+  const fetchTaskSteps = async () => {
+    try {
+      const response = await api.tasks.getSteps(unwrappedParams.id);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch task steps");
+      }
+
+      const data = await response.json();
+      setTaskSteps(data);
+
+      // Check if task is completed
+      if (data.some((step) => step.name === "Task Completed")) {
+        setTaskCompleted(true);
+        stopPollingSteps();
+      }
+    } catch (error) {
+      console.error("Error fetching task steps:", error);
+    }
+  };
+
+  // Fetch session recording
+  const fetchSessionRecording = async () => {
+    try {
+      const response = await fetch("/api/recording", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId: task.browser_session_id,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch recording");
+      }
+      setEvents(data);
+    } catch (err) {
+      console.error("Error fetching session recording:", err);
+      setError("Failed to load session recording");
+    }
+  };
+
+  // Start polling task details
+  const startPollingDetails = () => {
+    fetchTask();
+    taskDetailsIntervalRef.current = setInterval(fetchTask, 2000);
+  };
+
+  // Stop polling task details
+  const stopPollingDetails = () => {
+    if (taskDetailsIntervalRef.current) {
+      clearInterval(taskDetailsIntervalRef.current);
+      taskDetailsIntervalRef.current = null;
+    }
+  };
+
+  // Start polling task steps
+  const startPollingSteps = () => {
+    fetchTaskSteps();
+    taskStepsIntervalRef.current = setInterval(fetchTaskSteps, 2000);
+  };
+
+  // Stop polling task steps
+  const stopPollingSteps = () => {
+    if (taskStepsIntervalRef.current) {
+      clearInterval(taskStepsIntervalRef.current);
+      taskStepsIntervalRef.current = null;
+    }
+  };
 
   useEffect(() => {
-    // Fetch task details from /tasks/:id endpoint
-    const fetchTask = async () => {
-      try {
-        const response = await api.tasks.getById(unwrappedParams.id);
+    // Check if Browser Session Created step exists
+    if (
+      task &&
+      !task.live_view_url &&
+      taskSteps.some((step) => step.name === "Browser Session Created")
+    ) {
+      console.log("condition is triggered");
 
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError("Task not found");
-          } else {
-            throw new Error("Failed to fetch task");
-          }
-          return;
-        }
-
-        const data = await response.json();
-        setTask(data);
-
-        // If task is valid, switch to polling steps
-        if (data && data.isTaskValid === "true") {
-          stopPollingDetails();
-          startPollingSteps();
-          setValidationError("");
-        } else if (data && data.isTaskValid === "false") {
-          // If task is invalid, show validation error with the reason
-          setValidationError(data.reason || "Task cannot be processed");
-          stopPollingDetails();
-        }
-      } catch (error) {
-        setError("Failed to fetch task details");
-        console.error("Error:", error);
-      }
-    };
-
-    // Fetch task steps from /tasks/:taskId/steps endpoint
-    const fetchTaskSteps = async () => {
-      try {
-        const response = await api.tasks.getSteps(unwrappedParams.id);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch task steps");
-        }
-
-        const data = await response.json();
-        setTaskSteps(data);
-
-        // Check if task is completed
-        if (data.some((step) => step.name === "Task Completed")) {
-          setTaskCompleted(true);
-          stopPollingSteps();
-        }
-
-        // Check if Browser Session Created step exists
-        if (
-          !browserSessionCreated &&
-          data.some((step) => step.name === "Browser Session Created")
-        ) {
-          setBrowserSessionCreated(true);
-          fetchTask();
-        }
-      } catch (error) {
-        console.error("Error fetching task steps:", error);
-      }
-    };
-
-    // Fetch session recording
-    const fetchSessionRecording = async () => {
-      try {
-        const response = await fetch("/api/recording");
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch recording");
-        }
-        setEvents(data);
-      } catch (err) {
-        console.error("Error fetching session recording:", err);
-        setError("Failed to load session recording");
-      }
-    };
-
-    // Start polling task details
-    const startPollingDetails = () => {
       fetchTask();
-      taskDetailsIntervalRef.current = setInterval(fetchTask, 2000);
-    };
+    }
+  }, [taskSteps, task]);
 
-    // Stop polling task details
-    const stopPollingDetails = () => {
-      if (taskDetailsIntervalRef.current) {
-        clearInterval(taskDetailsIntervalRef.current);
-        taskDetailsIntervalRef.current = null;
-      }
-    };
+  // when task is completed fetch events for sesion replay
+  useEffect(() => {
+    taskCompleted && fetchSessionRecording();
+  }, [taskCompleted]);
 
-    // Start polling task steps
-    const startPollingSteps = () => {
-      fetchTaskSteps();
-      taskStepsIntervalRef.current = setInterval(fetchTaskSteps, 2000);
-    };
-
-    // Stop polling task steps
-    const stopPollingSteps = () => {
-      if (taskStepsIntervalRef.current) {
-        clearInterval(taskStepsIntervalRef.current);
-        taskStepsIntervalRef.current = null;
-      }
-    };
-
+  useEffect(() => {
     // Initialize polling and fetch session recording
     if (unwrappedParams.id) {
       startPollingDetails();
-      fetchSessionRecording();
     }
 
     // Cleanup on unmount
@@ -143,7 +160,23 @@ export default function TaskDetails({ params }) {
       stopPollingDetails();
       stopPollingSteps();
     };
-  }, [unwrappedParams.id, router, browserSessionCreated]);
+  }, [unwrappedParams.id, router]);
+
+  // when page is closed stop all polling
+  useEffect(() => {
+    return () => {
+      stopPollingDetails();
+      stopPollingSteps();
+    };
+  }, [unwrappedParams.id, router]);
+
+  // if task is completed stop all polling
+  useEffect(() => {
+    if (taskCompleted) {
+      stopPollingDetails();
+      stopPollingSteps();
+    }
+  }, [task, taskCompleted]);
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -203,26 +236,47 @@ export default function TaskDetails({ params }) {
               {task.name}
             </h1>
             <p className="mt-4 text-neutral-400">ID: {task.id}</p>
-            {events ? (
+
+            {taskCompleted ? (
               <>
-                <SessionReplayer events={events} />
-                <details className="rounded p-2 bg-neutral-200 mt-6">
-                  <summary>State</summary>
-                  <details className="rounded pt-2 px-5">
-                    <summary>Task Details</summary>
-                    <pre>{JSON.stringify(task, null, 2)}</pre>
-                  </details>
-                  <details className="rounded pt-2 px-5">
-                    <summary>Steps Details</summary>
-                    <pre>{JSON.stringify(taskSteps, null, 2)}</pre>
-                  </details>
-                </details>
+                {events ? (
+                  <SessionReplayer events={events} />
+                ) : (
+                  <div className="flex items-center justify-center h-[500px] bg-gray-100 rounded">
+                    <p className="text-gray-500">
+                      Loading session recording...
+                    </p>
+                  </div>
+                )}
               </>
             ) : (
-              <div className="flex items-center justify-center h-[500px] bg-gray-100 rounded">
-                <p className="text-gray-500">Loading session recording...</p>
-              </div>
+              <>
+                {task.live_view_url !== null ? (
+                  <SessionLivePlayer
+                    url={task.live_view_url}
+                    readOnly={false}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-[500px] bg-gray-100 rounded">
+                    <p className="text-gray-500">
+                      Validating task and connecting to a browser...
+                    </p>
+                  </div>
+                )}
+              </>
             )}
+
+            <details className="rounded p-2 bg-neutral-200 mt-6">
+              <summary>State</summary>
+              <details className="rounded pt-2 px-5">
+                <summary>Task Details</summary>
+                <pre>{JSON.stringify(task, null, 2)}</pre>
+              </details>
+              <details className="rounded pt-2 px-5">
+                <summary>Steps Details</summary>
+                <pre>{JSON.stringify(taskSteps, null, 2)}</pre>
+              </details>
+            </details>
           </div>
           <div className="col-span-5 border-l p-6 border-neutral-300 h-[calc(100vh-56px)] overflow-scroll">
             {validationError && (

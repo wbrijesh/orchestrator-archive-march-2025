@@ -60,7 +60,10 @@ export async function createBrowserSession(
  * Connect to browser using CDP with proper error handling
  * @returns The browser object if connection successful, null otherwise
  */
-export async function connectToBrowser(taskId: string, session: any): Promise<any> {
+export async function connectToBrowser(
+  taskId: string,
+  session: any,
+): Promise<any> {
   try {
     // Add a step to show connection attempt is starting
     await addStepToTask(taskId, {
@@ -109,7 +112,10 @@ export async function connectToBrowser(taskId: string, session: any): Promise<an
 /**
  * Create a new browser page and record the action
  */
-export async function createBrowserPage(browser: any, taskId: string): Promise<any> {
+export async function createBrowserPage(
+  browser: any,
+  taskId: string,
+): Promise<any> {
   const page = await browser.newPage();
 
   // Record the page creation
@@ -124,10 +130,24 @@ export async function createBrowserPage(browser: any, taskId: string): Promise<a
   return page;
 }
 
+export async function useDefaultPage(
+  browser: any,
+  taskId: string,
+): Promise<any> {
+  const context = browser.contexts()[0];
+  const page = context.pages()[0];
+
+  return page;
+}
+
 /**
  * Navigate to a URL and record the action
  */
-export async function navigateToUrl(page: any, taskId: string, url: string): Promise<void> {
+export async function navigateToUrl(
+  page: any,
+  taskId: string,
+  url: string,
+): Promise<void> {
   await page.goto(url);
 
   // Record the navigation
@@ -144,7 +164,11 @@ export async function navigateToUrl(page: any, taskId: string, url: string): Pro
 /**
  * Take a screenshot and record the action
  */
-export async function takeScreenshot(page: any, taskId: string, description: string): Promise<string> {
+export async function takeScreenshot(
+  page: any,
+  taskId: string,
+  description: string,
+): Promise<string> {
   const screenshotBuffer = await page.screenshot();
   const screenshotBase64 = screenshotBuffer.toString("base64");
 
@@ -164,7 +188,10 @@ export async function takeScreenshot(page: any, taskId: string, description: str
 /**
  * Close the browser and record the action
  */
-export async function closeBrowser(browser: any, taskId: string): Promise<void> {
+export async function closeBrowser(
+  browser: any,
+  taskId: string,
+): Promise<void> {
   await browser.close();
 
   // Record browser closure
