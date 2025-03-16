@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import TopBar from "@/components/blocks/top-bar";
@@ -24,8 +24,36 @@ export default function TaskDetails({ params }) {
   const [taskSteps, setTaskSteps] = useState([]);
   const [taskCompleted, setTaskCompleted] = useState(false);
 
+  // Fetch task steps from /tasks/:taskId/steps endpoint
+  const fetchTaskSteps = useCallback(async () => {
+    try {
+      const response = await api.tasks.getSteps(unwrappedParams.id);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch task steps");
+      }
+
+      const data = await response.json();
+      setTaskSteps(data);
+
+      // Check if task is completed
+      if (data.some((step) => step.name === "Task Completed")) {
+        setTaskCompleted(true);
+        stopPollingSteps();
+      }
+    } catch (error) {
+      console.error("Error fetching task steps:", error);
+    }
+  }, [unwrappedParams.id]);
+
+  // Start polling task steps
+  const startPollingSteps = useCallback(() => {
+    fetchTaskSteps();
+    taskStepsIntervalRef.current = setInterval(fetchTaskSteps, 2000);
+  }, [fetchTaskSteps]);
+
   // Fetch task details from /tasks/:id endpoint
-  const fetchTask = async () => {
+  const fetchTask = useCallback(async () => {
     try {
       const response = await api.tasks.getById(unwrappedParams.id);
 
@@ -55,32 +83,10 @@ export default function TaskDetails({ params }) {
       setError("Failed to fetch task details");
       console.error("Error:", error);
     }
-  };
-
-  // Fetch task steps from /tasks/:taskId/steps endpoint
-  const fetchTaskSteps = async () => {
-    try {
-      const response = await api.tasks.getSteps(unwrappedParams.id);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch task steps");
-      }
-
-      const data = await response.json();
-      setTaskSteps(data);
-
-      // Check if task is completed
-      if (data.some((step) => step.name === "Task Completed")) {
-        setTaskCompleted(true);
-        stopPollingSteps();
-      }
-    } catch (error) {
-      console.error("Error fetching task steps:", error);
-    }
-  };
+  }, [unwrappedParams.id, startPollingSteps]);
 
   // Fetch session recording
-  const fetchSessionRecording = async () => {
+  const fetchSessionRecording = useCallback(async () => {
     try {
       const response = await fetch("/api/recording", {
         method: "POST",
@@ -101,13 +107,13 @@ export default function TaskDetails({ params }) {
       console.error("Error fetching session recording:", err);
       setError("Failed to load session recording");
     }
-  };
+  }, [task]);
 
   // Start polling task details
-  const startPollingDetails = () => {
+  const startPollingDetails = useCallback(() => {
     fetchTask();
     taskDetailsIntervalRef.current = setInterval(fetchTask, 2000);
-  };
+  }, [fetchTask]);
 
   // Stop polling task details
   const stopPollingDetails = () => {
@@ -115,12 +121,6 @@ export default function TaskDetails({ params }) {
       clearInterval(taskDetailsIntervalRef.current);
       taskDetailsIntervalRef.current = null;
     }
-  };
-
-  // Start polling task steps
-  const startPollingSteps = () => {
-    fetchTaskSteps();
-    taskStepsIntervalRef.current = setInterval(fetchTaskSteps, 2000);
   };
 
   // Stop polling task steps
@@ -142,12 +142,12 @@ export default function TaskDetails({ params }) {
 
       fetchTask();
     }
-  }, [taskSteps, task]);
+  }, [taskSteps, task, fetchTask]);
 
   // when task is completed fetch events for sesion replay
   useEffect(() => {
     taskCompleted && fetchSessionRecording();
-  }, [taskCompleted]);
+  }, [taskCompleted, fetchSessionRecording]);
 
   useEffect(() => {
     // Initialize polling and fetch session recording
@@ -160,7 +160,7 @@ export default function TaskDetails({ params }) {
       stopPollingDetails();
       stopPollingSteps();
     };
-  }, [unwrappedParams.id, router]);
+  }, [unwrappedParams.id, router, startPollingDetails]);
 
   // when page is closed stop all polling
   useEffect(() => {

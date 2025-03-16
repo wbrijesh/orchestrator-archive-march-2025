@@ -10,10 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import Link from "next/link";
-import LogoIcon from "@/components/ui/logo-icon";
 import { authCallbacks } from "@/lib/callbacks";
+import Logo from "@/components/ui/logo";
 
 const TopBar = ({ userData }) => {
   const router = useRouter();
@@ -34,10 +33,10 @@ const TopBar = ({ userData }) => {
   return (
     userData.id && (
       <>
-        <div className="flex h-14 px-5 items-center justify-between">
-          <Link href={"/app"}>
-            <LogoIcon className="h-12 -mx-2" />
-          </Link>
+        <div className="flex h-14 px-4 items-center justify-between">
+          {/* <Link href={"/app"}> */}
+          <Logo />
+          {/* </Link> */}
           <div className="flex items-center gap-4">
             <Inbox className="size-6 text-muted-foreground" />
             <History className="size-6 text-muted-foreground" />
