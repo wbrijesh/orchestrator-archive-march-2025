@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import TopBar from "@/components/blocks/top-bar";
@@ -17,40 +17,9 @@ export default function TaskDetails({ params }) {
   const [events, setEvents] = useState(null);
   const unwrappedParams = React.use(params);
   const { userData, loading } = useUser();
-
-  // Polling refs and state
-  const taskDetailsIntervalRef = useRef(null);
-  const taskStepsIntervalRef = useRef(null);
   const [taskSteps, setTaskSteps] = useState([]);
-  const [taskCompleted, setTaskCompleted] = useState(false);
-
-  // Fetch task steps from /tasks/:taskId/steps endpoint
-  const fetchTaskSteps = useCallback(async () => {
-    try {
-      const response = await api.tasks.getSteps(unwrappedParams.id);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch task steps");
-      }
-
-      const data = await response.json();
-      setTaskSteps(data);
-
-      // Check if task is completed
-      if (data.some((step) => step.name === "Task Completed")) {
-        setTaskCompleted(true);
-        stopPollingSteps();
-      }
-    } catch (error) {
-      console.error("Error fetching task steps:", error);
-    }
-  }, [unwrappedParams.id]);
-
-  // Start polling task steps
-  const startPollingSteps = useCallback(() => {
-    fetchTaskSteps();
-    taskStepsIntervalRef.current = setInterval(fetchTaskSteps, 2000);
-  }, [fetchTaskSteps]);
+  const [taskCompleted, setTaskCompleted] = useState(null);
+  const [alreadySubscribedToSSE, setAlreadySubscribedToSSE] = useState(false); // to avoid double subscription
 
   // Fetch task details from /tasks/:id endpoint
   const fetchTask = useCallback(async () => {
@@ -69,24 +38,42 @@ export default function TaskDetails({ params }) {
       const data = await response.json();
       setTask(data);
 
-      // If task is valid, switch to polling steps
-      if (data && data.isTaskValid === "true") {
-        stopPollingDetails();
-        startPollingSteps();
-        setValidationError("");
-      } else if (data && data.isTaskValid === "false") {
-        // If task is invalid, show validation error with the reason
+      // If task is invalid, show validation error with the reason
+      if (data && data.isTaskValid === "false") {
         setValidationError(data.reason || "Task cannot be processed");
-        stopPollingDetails();
       }
     } catch (error) {
       setError("Failed to fetch task details");
       console.error("Error:", error);
     }
-  }, [unwrappedParams.id, startPollingSteps]);
+  }, [unwrappedParams.id]);
+
+  // Fetch task steps from /tasks/:taskId/steps endpoint
+  const fetchTaskSteps = useCallback(async () => {
+    try {
+      const response = await api.tasks.getSteps(unwrappedParams.id);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch task steps");
+      }
+
+      const data = await response.json();
+      setTaskSteps(data);
+
+      // Check if task is completed
+      if (data.some((step) => step.name === "Task Completed")) {
+        setTaskCompleted(true);
+      }
+
+      // Update task state from steps data
+      updateTaskStateFromSteps(data);
+    } catch (error) {
+      console.error("Error fetching task steps:", error);
+    }
+  }, [unwrappedParams.id]);
 
   // Fetch session recording
-  const fetchSessionRecording = useCallback(async () => {
+  const fetchSessionRecording = useCallback(async (browserSessionId) => {
     try {
       const response = await fetch("/api/recording", {
         method: "POST",
@@ -94,7 +81,7 @@ export default function TaskDetails({ params }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          sessionId: task.browser_session_id,
+          sessionId: browserSessionId,
         }),
       });
 
@@ -107,83 +94,7 @@ export default function TaskDetails({ params }) {
       console.error("Error fetching session recording:", err);
       setError("Failed to load session recording");
     }
-  }, [task]);
-
-  // Start polling task details
-  const startPollingDetails = useCallback(() => {
-    fetchTask();
-    taskDetailsIntervalRef.current = setInterval(fetchTask, 2000);
-  }, [fetchTask]);
-
-  // Stop polling task details
-  const stopPollingDetails = () => {
-    if (taskDetailsIntervalRef.current) {
-      clearInterval(taskDetailsIntervalRef.current);
-      taskDetailsIntervalRef.current = null;
-    }
-  };
-
-  // Stop polling task steps
-  const stopPollingSteps = () => {
-    if (taskStepsIntervalRef.current) {
-      clearInterval(taskStepsIntervalRef.current);
-      taskStepsIntervalRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    // Check if Browser Session Created step exists
-    if (
-      task &&
-      !task.live_view_url &&
-      taskSteps.some((step) => step.name === "Browser Session Created")
-    ) {
-      console.log("condition is triggered");
-
-      fetchTask();
-    }
-  }, [taskSteps, task, fetchTask]);
-
-  // when task is completed fetch events for sesion replay
-  useEffect(() => {
-    taskCompleted && fetchSessionRecording();
-  }, [taskCompleted, fetchSessionRecording]);
-
-  useEffect(() => {
-    // Initialize polling and fetch session recording
-    if (unwrappedParams.id) {
-      startPollingDetails();
-    }
-
-    // Cleanup on unmount
-    return () => {
-      stopPollingDetails();
-      stopPollingSteps();
-    };
-  }, [unwrappedParams.id, router, startPollingDetails]);
-
-  // when page is closed stop all polling
-  useEffect(() => {
-    return () => {
-      stopPollingDetails();
-      stopPollingSteps();
-    };
-  }, [unwrappedParams.id, router]);
-
-  // if task is completed stop all polling
-  useEffect(() => {
-    if (taskCompleted) {
-      stopPollingDetails();
-      stopPollingSteps();
-    }
-  }, [task, taskCompleted]);
-
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleString();
-  };
+  }, []);
 
   // Parse JSON data safely
   const parseData = (dataString) => {
@@ -193,6 +104,202 @@ export default function TaskDetails({ params }) {
     } catch (e) {
       return dataString;
     }
+  };
+
+  // Function to extract task validation details from steps
+  const extractTaskValidation = useCallback((steps) => {
+    const validationStep = steps.find(
+      (step) => step.name === "Task Validation",
+    );
+    if (validationStep) {
+      const parsedData = parseData(validationStep.data);
+      if (parsedData && parsedData.validation) {
+        return {
+          isTaskValid: parsedData.validation.isTaskValid.toString(),
+          reason: parsedData.validation.reason,
+        };
+      }
+    }
+    return null;
+  }, []);
+
+  // Function to extract browser session ID from steps
+  const extractBrowserSessionId = useCallback((steps) => {
+    const sessionStep = steps.find(
+      (step) => step.name === "Browser Session Created",
+    );
+    if (sessionStep) {
+      const parsedData = parseData(sessionStep.data);
+      return parsedData?.sessionId || null;
+    }
+    return null;
+  }, []);
+
+  // Function to extract browser connection URL from steps
+  const extractBrowserConnectUrl = useCallback((steps) => {
+    const connectionStep = steps.find(
+      (step) => step.name === "Browser Connection Starting",
+    );
+    if (connectionStep) {
+      const parsedData = parseData(connectionStep.data);
+      return parsedData?.connectUrl || null;
+    }
+    return null;
+  }, []);
+
+  // Function to extract browser live view URL from steps
+  const extractLiveViewUrl = useCallback((steps) => {
+    const liveViewStep = steps.find(
+      (step) => step.name === "Browser Session Created",
+    );
+    if (liveViewStep) {
+      const parsedData = parseData(liveViewStep.data);
+      return parsedData?.liveViewUrl || null;
+    }
+    return null;
+  });
+
+  // Update task state from steps data
+  const updateTaskStateFromSteps = useCallback(
+    (steps) => {
+      setTask((prevTask) => {
+        if (!prevTask) return prevTask;
+
+        // Create a new task object with updated fields
+        const updatedTask = { ...prevTask };
+
+        // Extract and update validation info
+        const validation = extractTaskValidation(steps);
+        if (validation) {
+          updatedTask.isTaskValid = validation.isTaskValid;
+          updatedTask.reason = validation.reason;
+        }
+
+        // Extract and update browser session ID
+        const browserSessionId = extractBrowserSessionId(steps);
+        if (browserSessionId && !updatedTask.browser_session_id) {
+          updatedTask.browser_session_id = browserSessionId;
+        }
+
+        // Extract and update browser connect URL
+        const browserConnectUrl = extractBrowserConnectUrl(steps);
+        if (browserConnectUrl && !updatedTask.browser_connect_url) {
+          updatedTask.browser_connect_url = browserConnectUrl;
+        }
+
+        // Extract and update live view URL
+        const liveViewUrl = extractLiveViewUrl(steps);
+        if (liveViewUrl && !updatedTask.live_view_url) {
+          updatedTask.live_view_url = liveViewUrl;
+        }
+
+        // Check if task is completed based on steps
+        if (
+          steps.some(
+            (step) =>
+              step.name === "Task Completed" || step.name === "Task Failed",
+          )
+        ) {
+          updatedTask.status = "COMPLETED";
+        }
+
+        return updatedTask;
+      });
+    },
+    [
+      extractTaskValidation,
+      extractBrowserSessionId,
+      extractBrowserConnectUrl,
+      extractLiveViewUrl,
+    ],
+  );
+
+  // Subscribe to SSE for task updates
+  const subscribeToSSE = useCallback(() => {
+    if (alreadySubscribedToSSE || taskCompleted) {
+      return () => {}; // Return empty cleanup function if already subscribed
+    }
+
+    setAlreadySubscribedToSSE(true);
+    const eventSource = new EventSource(
+      `http://localhost:8000/task/${unwrappedParams.id}/sse`,
+    );
+
+    eventSource.onmessage = (event) => {
+      const update = JSON.parse(event.data);
+      console.log("Received this update: ", JSON.stringify(update, null, 2));
+      if (update.type === "step") {
+        // Add new step to taskSteps state
+        setTaskSteps((prevSteps) => {
+          const newSteps = [...prevSteps, update.step];
+          // Update task state from updated steps
+          updateTaskStateFromSteps(newSteps);
+          return newSteps;
+        });
+      } else if (update.type === "status") {
+        // Update task status directly
+        setTask((prevTask) => ({
+          ...prevTask,
+          status: update.status,
+        }));
+
+        if (update.status === "completed" || update.status === "error") {
+          setTaskCompleted(true);
+          eventSource.close();
+        }
+      } else if (update.type === "validation") {
+        // Update task validation directly
+        setTask((prevTask) => ({
+          ...prevTask,
+          isTaskValid: update.isTaskValid.toString(),
+          reason: update.reason,
+        }));
+
+        if (!update.isTaskValid) {
+          setValidationError(update.reason || "Task cannot be processed");
+        }
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [unwrappedParams.id, alreadySubscribedToSSE, updateTaskStateFromSteps]);
+
+  useEffect(() => {
+    // Only fetch when we don't have the data yet
+    if (!task) {
+      fetchTask();
+      fetchTaskSteps();
+    }
+  }, [fetchTask, fetchTaskSteps, task]);
+
+  useEffect(() => {
+    // Subscribe to SSE if task is valid and not completed or errored
+    if (task && taskCompleted !== null) {
+      subscribeToSSE();
+    }
+  }, [task, taskCompleted, subscribeToSSE]);
+
+  useEffect(() => {
+    // Fetch session recording when task is completed
+    if (taskCompleted) {
+      if (!task.browser_session_id) {
+        fetchTask();
+      }
+      task.browser_session_id && fetchSessionRecording(task.browser_session_id);
+    }
+  }, [taskCompleted, fetchSessionRecording, task]);
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleString();
   };
 
   if (loading) {
@@ -328,9 +435,11 @@ export default function TaskDetails({ params }) {
                             <h3 className="text-lg font-medium text-gray-900">
                               {step.name}
                             </h3>
-                            <span className="text-xs font-medium bg-blue-100 text-blue-800 rounded-full px-2 py-1">
-                              Sequence: {step.sequence}
-                            </span>
+                            {step.sequence && (
+                              <span className="text-xs font-medium bg-blue-100 text-blue-800 rounded-full px-2 py-1">
+                                Sequence: {step.sequence}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
                             {formatDate(step.created_at)}

@@ -22,7 +22,9 @@ export async function createBrowserSession(
 
     // Create the session (now also fetches the live view URL)
     console.log(`Creating browser session for task ${taskId}...`);
-    const session = await browserManager.createNewSession({ taskId });
+    const { session, liveViewUrl } = await browserManager.createNewSession({
+      taskId,
+    });
     console.log(`Browser session created for task ${taskId}: ${session.id}`);
 
     // Record successful creation, including live view URL if available
@@ -31,6 +33,7 @@ export async function createBrowserSession(
       data: JSON.stringify({
         timestamp: new Date().toISOString(),
         sessionId: session.id,
+        liveViewUrl: liveViewUrl,
         message: "Browser session created successfully",
       }),
     });
